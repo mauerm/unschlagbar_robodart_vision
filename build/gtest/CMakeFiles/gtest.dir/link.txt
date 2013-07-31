@@ -1,1 +1,0 @@
-/usr/bin/c++  -fPIC -O2 -g   -shared -Wl,-soname,libgtest.so -o /home/mauerm/groovy_ws/sandbox/robodart_vision/lib/libgtest.so CMakeFiles/gtest.dir/src/gtest-all.cc.o -L/opt/ros/groovy/lib -L/home/mauerm/groovy_ws/sandbox/robodart_vision/build/gtest/src -lpthread -Wl,-rpath,/opt/ros/groovy/lib:/home/mauerm/groovy_ws/sandbox/robodart_vision/build/gtest/src 
