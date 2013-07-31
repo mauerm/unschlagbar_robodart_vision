@@ -1,0 +1,15 @@
+<package>
+  <description brief="robodart_vision">
+
+     robodart_vision
+
+  </description>
+  <author>mauerm</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/robodart_vision</url>
+  <depend package="rospy"/>
+  <depend package="std_msgs"/>
+</package>
+
+
