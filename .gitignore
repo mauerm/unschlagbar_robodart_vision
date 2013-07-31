@@ -1,3 +1,11 @@
+# ignore python compiled files
+*.pyc
+
+#ignore gedit temp files
+*.*~
+
+# ignore binaries and build files
 build/*
-*~
-*/*~
+bin/*
+lib/*
+srv_gen/*
