@@ -30,24 +30,37 @@ class Robodart_vision():
   #parameters for calculate
   camera_width = 640
   camera_height = 480
+
+  threshold_value = 150
   
   board_radius = 156 #in pixel
   board_radius_m = 0.5
 
   pixel_per_meter = 951
 
+  dartboard_radius_meter = 0.23 # Groesse der Scheibe in Meter
+  dartboard_radius_pixel = 765 # Groesse der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
+
+
   def __init__(self):
     #cv2.namedWindow("Image window", 1)
+    cv2.namedWindow("test", 1 )
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("UI122xLE_C/image_raw", Image, self.receive_image_from_camera_callback)
     self.cam_info  = rospy.Subscriber("UI122xLE_C/camera_info", CameraInfo, self.update_cam_info)
+    
   
-
+  ''' ============================ '''
+  ''' Sets the Ticker, THREADSAVE! '''
+  ''' ============================ '''
   def setTicker(self, value):
     self.lock.acquire()
     self.ticker = value
     self.lock.release()
 
+  ''' ================================= '''
+  ''' Callback for Raw_Image_Node (ros) '''
+  ''' ================================= '''
   def receive_image_from_camera_callback(self, data):
     try:
       cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
@@ -60,10 +73,16 @@ class Robodart_vision():
     except CvBridgeError, e:
       print e
       
+  ''' =============================== '''
+  ''' Callback for CamInfo_Node (ros) '''
+  ''' =============================== '''
   def update_cam_info(self, data):
     self.width = data.width
     self.height = data.height
 
+  ''' ========================================== '''
+  ''' Saves the Currentframe as ReferencePicture '''
+  ''' ========================================== '''
   def take_reference_picture(self, req):
     if self.ticker == True:      
       print "take_reference_picture()..."
@@ -75,7 +94,9 @@ class Robodart_vision():
       self.showPicWithCircles(self.last_reference_picture)
     return []
     
-
+  ''' ================================================================== '''
+  ''' Calculates the Offset from the Bullseye to the Center of the Image '''
+  ''' ================================================================== '''
   def get_bullseye_center_offset(self, req):
     print "get_bullseye_center_offset()..."
     if self.ticker == True:    
@@ -85,34 +106,94 @@ class Robodart_vision():
       xMid = self.width / 2
       yMid = self.height / 2
       
-      if len(circles) > 1:
-        xAvg = 0
-        yAvg = 0
-        for c in circles:
-          xAvg += c[0]
-          yAvg += c[1]
-        xAvg = xAvg / len(circles)
-        yAvg = yAvg / len(circles)
+      avg = self.getAverageCircleMiddle(circles)
 
-      else :
-        xAvg = circles[0][0]
-        yAvg = circles[0][1]
-
-      xDif = xMid - xAvg
-      yDif = yMid - yAvg
+      xDif = xMid - avg[0]
+      yDif = yMid - avg[1]
       
       self.setTicker(False)
     return [xDif/self.pixel_per_meter, yDif/self.pixel_per_meter]
 
+  ''' ============================================================== '''
+  ''' Calculates the Offset from the Dart to the Center of the Image '''
+  ''' ============================================================== '''
   def get_dart_center_offset(self, req):
+    
+
+    #xMid = self.width / 2
+    #yMid = self.height / 2
+
+    xMid = 1280
+    yMid = 960
+
+  
     print "get_dart_center_offset()..."
+    ''' #Test -------------------- 
+    #currentFrame = self.frame
+    currentFrame = cv.LoadImageM("belichtung5_6.jpg")
+    circles = self.detect_circles(currentFrame, False)
+    currentFrame = np.asarray(currentFrame)
+    currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
+    
+    currentFrame2 = cv.LoadImageM("belichtung5_6_mitPfeil.jpg")    
+    circles2 = self.detect_circles(currentFrame2, False)     
+    currentFrame2 = np.asarray(currentFrame2)
+    currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
+
+    currentFrame = cv.fromarray(currentFrame)
+    currentFrame2 = cv.fromarray(currentFrame2)
+
+    ''' Get Subimage1'''
+    avg = self.getAverageCircleMiddle(circles)
+    
+    xStart = avg[0] - self.dartboard_radius_pixel
+    yStart = avg[1] - self.dartboard_radius_pixel
+
+    length = 2 * self.dartboard_radius_pixel
+
+    subframe = cv.GetSubRect(currentFrame, (int(xStart), int(yStart), int(length), int(length)))
+
+    ''' Get Subimage2'''
+    avg2 = self.getAverageCircleMiddle(circles2)
+    
+    xStart2 = avg2[0] - self.dartboard_radius_pixel
+    yStart2 = avg2[1] - self.dartboard_radius_pixel
+
+    length = 2 * self.dartboard_radius_pixel
+
+    subframe2 = cv.GetSubRect(currentFrame2, (int(xStart2), int(yStart2), int(length), int(length)))    
+    
+    div = cv.CreateMat(subframe.rows, subframe.cols, cv.CV_8UC1)
+
+
+    cv.AbsDiff(subframe, subframe2, div)
+
+    cv.SaveImage("div1.jpg", div)
+
+    div = np.asarray(div)    
+
+    #cv2.threshold(currentFrame, bitmap, self.threshold_value, 255, 3)
+    bitmap = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)
+
+        
+    bitmapPic = cv.fromarray(bitmap[1])
+    cv.SaveImage("div_threshold.jpg", bitmapPic)     
+
+    cv2.waitKey(20)
+    
+    #end test---------------------'''
     return [0.1, 0.2]
 
+  ''' ========================================== '''
+  ''' Returns an Array with all Detected Circles '''
+  ''' ========================================== '''
   def detect_circles(self, image, draw=True):
     image = np.asarray(image)
     frameGrey = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
     frameBlur = cv2.GaussianBlur(frameGrey, (0,0), 2)
-    circles = cv2.HoughCircles(frameBlur, cv2.cv.CV_HOUGH_GRADIENT, self.dp, self.minDist, np.array([]), self.param1, self.param2, self.minRadius, self.maxRadius)
+    circles = cv2.HoughCircles(frameBlur, cv2.cv.CV_HOUGH_GRADIENT, 
+                               self.dp, self.minDist, np.array([]), self.param1, 
+                               self.param2, self.minRadius, self.maxRadius)
     if circles is not None:
       for c in circles[0]:
         print c
@@ -131,6 +212,32 @@ class Robodart_vision():
 
     return circles[0]
 
+  ''' ========================================================== '''
+  ''' Returns an Array (aka Point) with the Average CircleMiddle '''
+  ''' ========================================================== '''
+  def getAverageCircleMiddle(self, circles):
+    if (circles == None):
+      return None
+
+    if len(circles) > 1:
+      xAvg = 0
+      yAvg = 0
+      for c in circles:
+        xAvg += c[0]
+        yAvg += c[1]
+      xAvg = xAvg / len(circles)
+      yAvg = yAvg / len(circles)
+
+    else :
+      xAvg = circles[0][0]
+      yAvg = circles[0][1]
+
+    return [xAvg, yAvg]
+
+  ''' =============================================== '''
+  ''' Displayes the Picture with all detected Circles '''
+  ''' OBSOLETED!!! USE detect_circles instead         '''
+  ''' =============================================== '''
   def showPicWithCircles(self, pic, windowName="Circles"):
     #parameters for ObserveDartboard
     dp = 1           
@@ -158,7 +265,6 @@ class Robodart_vision():
 
 
 if __name__ == '__main__':
-
   rospy.init_node('robodart_vision_node')
   
   try:
@@ -173,4 +279,3 @@ if __name__ == '__main__':
   print "All Services ready"
 
   rospy.spin()
-  
