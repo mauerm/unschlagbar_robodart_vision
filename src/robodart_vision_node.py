@@ -36,7 +36,21 @@ class Robodart_vision():
   board_radius = 156 #in pixel
   board_radius_m = 0.5
 
-  pixel_per_meter = 951
+  """
+  This value is calculated by calling:
+  rosservice call /robodart_vision/get_bullseye_center_offset
+  
+  Devide the 3rd value shown by robodart_vision node for the corresponding circle by
+  the measured radius of the circle.
+  """
+  pixel_per_meter = 2925.029107981
+
+  """
+  If the gripper is positioned correctly above the bullseye.
+  This value is returned by:
+  rosservice call /robodart_vision/get_bullseye_center_offset
+  """
+  camera_dart_offset = [-0.0876930442617,0.0788041485691]
 
   dartboard_radius_meter = 0.23 # Groesse der Scheibe in Meter
   dartboard_radius_pixel = 765 # Groesse der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
@@ -91,6 +105,8 @@ class Robodart_vision():
       
       #cv.ShowImage("Image", currentFrame)
 
+      cv.SaveImage("refpic.png", self.last_reference_picture)
+
       self.showPicWithCircles(self.last_reference_picture)
     return []
     
@@ -98,6 +114,7 @@ class Robodart_vision():
   ''' Calculates the Offset from the Bullseye to the Center of the Image '''
   ''' ================================================================== '''
   def get_bullseye_center_offset(self, req):
+
     print "get_bullseye_center_offset()..."
     if self.ticker == True:    
       currentFrame = self.frame
@@ -112,7 +129,7 @@ class Robodart_vision():
       yDif = yMid - avg[1]
       
       self.setTicker(False)
-    return [xDif/self.pixel_per_meter, yDif/self.pixel_per_meter]
+    return [-xDif/self.pixel_per_meter + self.camera_dart_offset[0], yDif/self.pixel_per_meter + self.camera_dart_offset[1]]
 
   ''' ============================================================== '''
   ''' Calculates the Offset from the Dart to the Center of the Image '''
