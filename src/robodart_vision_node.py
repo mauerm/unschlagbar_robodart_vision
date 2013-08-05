@@ -13,6 +13,8 @@ from robodart_vision.srv import Point
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CameraInfo
 import threading
+import os
+
 
 class Robodart_vision():
   lock =threading.Lock()
@@ -31,7 +33,7 @@ class Robodart_vision():
   camera_width = 640
   camera_height = 480
 
-  threshold_value = 150
+  threshold_value = 75
   
   board_radius = 156 #in pixel
   board_radius_m = 0.5
@@ -145,32 +147,35 @@ class Robodart_vision():
 
   
     print "get_dart_center_offset()..."
-    ''' #Test -------------------- 
+    #Test -------------------- 
     #currentFrame = self.frame
-    currentFrame = cv.LoadImageM("belichtung5_6.jpg")
-    circles = self.detect_circles(currentFrame, False)
+    currentFrame = cv.LoadImageM("refpic.png")
+    #circles = self.detect_circles(currentFrame, False)
     currentFrame = np.asarray(currentFrame)
     currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
     
-    currentFrame2 = cv.LoadImageM("belichtung5_6_mitPfeil.jpg")    
-    circles2 = self.detect_circles(currentFrame2, False)     
+    currentFrame2 = cv.LoadImageM("refpic1.png")    
+    #circles2 = self.detect_circles(currentFrame2, False)     
     currentFrame2 = np.asarray(currentFrame2)
     currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
 
     currentFrame = cv.fromarray(currentFrame)
     currentFrame2 = cv.fromarray(currentFrame2)
-
-    ''' Get Subimage1'''
+    
+    '''
+    #Get Subimage1
     avg = self.getAverageCircleMiddle(circles)
     
     xStart = avg[0] - self.dartboard_radius_pixel
     yStart = avg[1] - self.dartboard_radius_pixel
 
+    print xStart, "...", yStart
+
     length = 2 * self.dartboard_radius_pixel
 
     subframe = cv.GetSubRect(currentFrame, (int(xStart), int(yStart), int(length), int(length)))
 
-    ''' Get Subimage2'''
+    #Get Subimage2
     avg2 = self.getAverageCircleMiddle(circles2)
     
     xStart2 = avg2[0] - self.dartboard_radius_pixel
@@ -179,11 +184,14 @@ class Robodart_vision():
     length = 2 * self.dartboard_radius_pixel
 
     subframe2 = cv.GetSubRect(currentFrame2, (int(xStart2), int(yStart2), int(length), int(length)))    
-    
+        
+    #Get Dif Image
     div = cv.CreateMat(subframe.rows, subframe.cols, cv.CV_8UC1)
-
-
     cv.AbsDiff(subframe, subframe2, div)
+    '''
+
+    div = cv.CreateMat(currentFrame.rows, currentFrame.cols, cv.CV_8UC1)
+    cv.AbsDiff(currentFrame, currentFrame2, div)
 
     cv.SaveImage("div1.jpg", div)
 
@@ -196,10 +204,38 @@ class Robodart_vision():
     bitmapPic = cv.fromarray(bitmap[1])
     cv.SaveImage("div_threshold.jpg", bitmapPic)     
 
-    cv2.waitKey(20)
+
+    counter = 0
+    sumX = 0
+    sumY = 0    
+
+    for col in range(bitmapPic.cols):
+      for row in range(bitmapPic.rows):
+        if bitmapPic[row, col] != 0.0:        
+          #print bitmapPic[row,col], '  at: ', row, 'x', col
+          counter = counter + 1
+          sumX = sumX + col
+          sumY = sumY + row
+
+    xPos = sumX / counter
+    yPos = sumY / counter
+
+    print 'arrow at: ', xPos, 'x', yPos
+
+    xOffset = xMid - xPos
+    yOffset = yMid - yPos
+  
+    xOffsetMeter = xOffset / self.pixel_per_meter
+    yOffsetMeter = yOffset / self.pixel_per_meter
+  
+    #print bitmapPic.getData()
+
+
+
+    #cv2.waitKey(20)
     
     #end test---------------------'''
-    return [0.1, 0.2]
+    return [xOffsetMeter, yOffsetMeter]
 
   ''' ========================================== '''
   ''' Returns an Array with all Detected Circles '''
@@ -211,9 +247,12 @@ class Robodart_vision():
     circles = cv2.HoughCircles(frameBlur, cv2.cv.CV_HOUGH_GRADIENT, 
                                self.dp, self.minDist, np.array([]), self.param1, 
                                self.param2, self.minRadius, self.maxRadius)
-    if circles is not None:
-      for c in circles[0]:
-        print c
+    if circles is None:
+      
+      return None
+
+    for c in circles[0]:
+      print c
 
     if draw == True:
       for c in circles[0]:
@@ -225,9 +264,10 @@ class Robodart_vision():
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
       cv.Resize( image, small);
       cv.ShowImage("Circles", small)
-        
+      
 
     return circles[0]
+
 
   ''' ========================================================== '''
   ''' Returns an Array (aka Point) with the Average CircleMiddle '''
