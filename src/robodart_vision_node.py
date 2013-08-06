@@ -30,8 +30,6 @@ class Robodart_vision():
   minRadius = 80 #Minimum circle radius.
   maxRadius = 190#Maximum circle radius.
   #parameters for calculate
-  camera_width = 640
-  camera_height = 480
 
   threshold_value = 75
   
@@ -237,7 +235,7 @@ class Robodart_vision():
     #cv2.waitKey(20)
     
     #end test---------------------'''
-    return [xOffsetMeter, yOffsetMeter]
+    return [xOffsetMeter - self.camera_dart_offset[0], yOffsetMeter - self.camera_dart_offset[1]]
 
   ''' ========================================== '''
   ''' Returns an Array with all Detected Circles '''
@@ -265,13 +263,8 @@ class Robodart_vision():
       cv.SaveImage("CircleImage.png", image)
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
       cv.Resize( image, small);
-<<<<<<< HEAD
+
       #cv.ShowImage("Circles", small)
-        
-=======
-      cv.ShowImage("Circles", small)
-      
->>>>>>> e5e6b50c127c2742611462364cf20c79511cea95
 
     return circles[0]
 
