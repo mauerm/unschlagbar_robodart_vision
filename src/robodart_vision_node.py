@@ -149,12 +149,12 @@ class Robodart_vision():
     print "get_dart_center_offset()..."
     #Test -------------------- 
     #currentFrame = self.frame
-    currentFrame = cv.LoadImageM("refpic.png")
+    currentFrame = cv.LoadImageM("refpic.jpg")
     circles = self.detect_circles(currentFrame, False)
     currentFrame = np.asarray(currentFrame)
     currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
     
-    currentFrame2 = cv.LoadImageM("refpic1.png")    
+    currentFrame2 = cv.LoadImageM("refpic1.jpg")    
     circles2 = self.detect_circles(currentFrame2, False)     
     currentFrame2 = np.asarray(currentFrame2)
     currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
@@ -301,8 +301,7 @@ class Robodart_vision():
                                self.dp, self.minDist, np.array([]), self.param1, 
                                self.param2, self.minRadius, self.maxRadius)
     if circles is None:
-      
-      return None
+      raise Exception("I didn't find any Circles in the Image.")
 
     for c in circles[0]:
       print c
