@@ -42,6 +42,7 @@ class Robodart_vision():
   dp = 1 #Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height.
   minDist = 10 #Minimum distance between the centers of the detected circles. If the parameter is too small, multiple neighbor circles may be falsely detected in addition to a true one. If it is too large, some circles may be missed.
   param1 = 40 #First method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the higher threshold of the two passed to the Canny() edge detector (the lower one is twice smaller).
+
   param2 = 300 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
   minRadius = 80 #Minimum circle radius.
   maxRadius = 700#Maximum circle radius.
@@ -71,7 +72,9 @@ class Robodart_vision():
   This value is returned by:
   rosservice call /robodart_vision/get_bullseye_center_offset
   """
-  camera_dart_offset = [0.309408827795,-0.0363646297808]
+  camera_dart_offset = [0,0]
+
+  #10m offset [0.309408827795,-0.0363646297808]
 
   dartboard_radius_meter = 0.23 # Radius der Scheibe in Meter
   dartboard_radius_pixel = 642 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
@@ -204,7 +207,7 @@ class Robodart_vision():
 
       cv.SaveImage("refpic.png", self.last_reference_picture)
 
-      self.showPicWithCircles(self.last_reference_picture)
+      #self.showPicWithCircles(self.last_reference_picture)
     return []
     
   ''' ================================================================== '''
@@ -248,8 +251,8 @@ class Robodart_vision():
     circles = self.detect_circles(currentFrame, False)
     currentFrame = np.asarray(currentFrame)
     currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
-    
-    currentFrame2 = cv.LoadImageM("refpic1.png")    
+
+    currentFrame2 = cv.LoadImageM("refpic1.png") 
     circles2 = self.detect_circles(currentFrame2, False)     
     currentFrame2 = np.asarray(currentFrame2)
     currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
@@ -308,7 +311,6 @@ class Robodart_vision():
     
     subframe2 = cv.GetSubRect(currentFrame2, (int(xStart2), int(yStart2), int(lengthX2), int(lengthY2)))   
 
-
     if subframe.cols != subframe2.cols or subframe.rows != subframe2.rows:
       minCols = min(subframe.cols, subframe2.cols)
       minRows = min(subframe.rows, subframe2.rows)
@@ -325,7 +327,6 @@ class Robodart_vision():
     cv.SaveImage("sub1.png", subframe)
     cv.SaveImage("sub2.png", subframe2)
     
-
     #Get Dif Image
     div = cv.CreateMat(subframe.rows, subframe.cols, cv.CV_8UC1)
     cv.AbsDiff(subframe, subframe2, div)
