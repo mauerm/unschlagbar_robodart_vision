@@ -26,12 +26,13 @@ class Robodart_vision():
   dp = 1 #Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height.
   minDist = 10 #Minimum distance between the centers of the detected circles. If the parameter is too small, multiple neighbor circles may be falsely detected in addition to a true one. If it is too large, some circles may be missed.
   param1 = 40 #First method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the higher threshold of the two passed to the Canny() edge detector (the lower one is twice smaller).
-  param2 = 140 #280 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
-  minRadius = 200 #Minimum circle radius.
-  maxRadius = 1000#Maximum circle radius.
+
+  param2 = 300 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
+  minRadius = 80 #Minimum circle radius.
+  maxRadius = 700#Maximum circle radius.
   #parameters for calculate
 
-  threshold_value = 75
+  threshold_value = 110
   
   board_radius = 156 #in pixel
   board_radius_m = 0.5
@@ -56,8 +57,8 @@ class Robodart_vision():
 
   #10m offset [0.309408827795,-0.0363646297808]
 
-  dartboard_radius_meter = 0.23 # Groesse der Scheibe in Meter
-  dartboard_radius_pixel = 765 # Groesse der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
+  dartboard_radius_meter = 0.23 # Radius der Scheibe in Meter
+  dartboard_radius_pixel = 642 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
 
   def __init__(self):
@@ -156,7 +157,7 @@ class Robodart_vision():
     currentFrame = np.asarray(currentFrame)
     currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
     
-    currentFrame2 = cv.LoadImageM("refpic1.png")    
+    currentFrame2 = cv.LoadImageM("refpic1.png")  
     circles2 = self.detect_circles(currentFrame2, False)     
     currentFrame2 = np.asarray(currentFrame2)
     currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
@@ -164,37 +165,82 @@ class Robodart_vision():
     currentFrame = cv.fromarray(currentFrame)
     currentFrame2 = cv.fromarray(currentFrame2)
     
-    '''
+    
+    length = 2 * self.dartboard_radius_pixel
+    lengthY1 = length
+    lengthX1 = length
+    lengthY2 = length
+    lengthX2 = length
+
     #Get Subimage1
     avg = self.getAverageCircleMiddle(circles)
     
     xStart = avg[0] - self.dartboard_radius_pixel
     yStart = avg[1] - self.dartboard_radius_pixel
 
-    print xStart, "...", yStart
+    if (xStart + lengthX1 > currentFrame.cols):
+      lengthX1 = currentFrame.cols - xStart
 
-    length = 2 * self.dartboard_radius_pixel
+    if (yStart + lengthY1 > currentFrame.rows):
+      lengthY1 = currentFrame.rows - yStart
 
-    subframe = cv.GetSubRect(currentFrame, (int(xStart), int(yStart), int(length), int(length)))
+    print "--------------------------------------------------------"
+    print "Start at: ", xStart, "x", yStart
+    print "Length is: ", lengthX1, "x", lengthY1
+    print "So end is at: ", xStart+lengthX1, "x", yStart+lengthY1
+    print "My res is: ", currentFrame.cols, "x", currentFrame.rows
+    print "--------------------------------------------------------"
+
+
+    subframe = cv.GetSubRect(currentFrame, (int(xStart), int(yStart), int(lengthX1), int(lengthY1)))
+    
 
     #Get Subimage2
     avg2 = self.getAverageCircleMiddle(circles2)
     
     xStart2 = avg2[0] - self.dartboard_radius_pixel
     yStart2 = avg2[1] - self.dartboard_radius_pixel
+    
+    if (xStart2 + lengthX2 > currentFrame2.cols):
+      lengthX2 = currentFrame2.cols - xStart2
 
-    length = 2 * self.dartboard_radius_pixel
+    if (yStart2 + lengthY2 > currentFrame2.rows):
+      lengthY2 = currentFrame2.rows - yStart2
 
-    subframe2 = cv.GetSubRect(currentFrame2, (int(xStart2), int(yStart2), int(length), int(length)))    
-            
+    print "--------------------------------------------------------"
+    print "Start at: ", xStart2, "x", yStart2
+    print "Length is: ", lengthX2, "x", lengthY2
+    print "So end is at: ", xStart2+lengthX2, "x", yStart2+lengthY2
+    print "My res is: ", currentFrame2.cols, "x", currentFrame2.rows
+    print "--------------------------------------------------------"
+    
+    subframe2 = cv.GetSubRect(currentFrame2, (int(xStart2), int(yStart2), int(lengthX2), int(lengthY2)))   
+
+    if subframe.cols != subframe2.cols or subframe.rows != subframe2.rows:
+      minCols = min(subframe.cols, subframe2.cols)
+      minRows = min(subframe.rows, subframe2.rows)
+
+      subframeTemp = cv.CreateMat(minRows, minCols, cv.CV_8UC1)
+      subframe2Temp = cv.CreateMat(minRows, minCols, cv.CV_8UC1)
+
+      cv.Resize( subframe, subframeTemp);
+      cv.Resize( subframe2, subframe2Temp);
+    
+      subframe = subframeTemp
+      subframe2 = subframe2Temp
+
+    cv.SaveImage("sub1.png", subframe)
+    cv.SaveImage("sub2.png", subframe2)
+    
     #Get Dif Image
     div = cv.CreateMat(subframe.rows, subframe.cols, cv.CV_8UC1)
     cv.AbsDiff(subframe, subframe2, div)
+    
     '''
-
     div = cv.CreateMat(currentFrame.rows, currentFrame.cols, cv.CV_8UC1)
     cv.AbsDiff(currentFrame, currentFrame2, div)
-
+    '''
+    
     cv.SaveImage("div1.jpg", div)
 
     div = np.asarray(div)    
@@ -219,8 +265,14 @@ class Robodart_vision():
           sumX = sumX + col
           sumY = sumY + row
 
+    if counter == 0:
+      raise Exception("The images are exactly the same after the Trashhold! Maybe adjust Trashhold")
+
     xPos = sumX / counter
     yPos = sumY / counter
+
+    xPos = xPos + xStart
+    yPos = yPos + yStart
 
     print 'arrow at: ', xPos, 'x', yPos
 
@@ -250,8 +302,7 @@ class Robodart_vision():
                                self.dp, self.minDist, np.array([]), self.param1, 
                                self.param2, self.minRadius, self.maxRadius)
     if circles is None:
-      
-      return None
+      raise Exception("I didn't find any Circles in the Image.")
 
     for c in circles[0]:
       print c
