@@ -14,11 +14,27 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CameraInfo
 import threading
 import os
+import time
 
 
 class Robodart_vision():
+   
   lock =threading.Lock()
   ticker = False
+
+  ''' StreamTicker: Shows the current status of the Stream 
+
+  Valid values are:
+    0 - The originall image takes the whole Stream
+    1 - The originall image is showen in the upper left corner, an image of the Resent event is showen in the middle
+
+  '''
+  lock2 = threading.Lock()
+  streamTicker = 1
+  eventImage = None
+  counter = 0
+  PublishRate = 1 # Publishes every n-th frame
+
 
   BGsample = 30 #number of frames to gather BG samples (average) from at start of capture
   circle_sample= 20 #number of Circles for calculate center
@@ -37,6 +53,8 @@ class Robodart_vision():
   board_radius_m = 0.5
 
   LiveCaptureSize = [1400, 880]
+  StreamSize      = [640, 480]
+  StreamPiPSize   = [320, 240]
 
   """
   This value is calculated by calling:
@@ -44,6 +62,7 @@ class Robodart_vision():
   
   Devide the 3rd value shown by robodart_vision node for the corresponding circle by
   the measured radius of the circle.
+  The last Value from about 10 Meter was: 2983.668489245
   """
   pixel_per_meter = 2983.668489245
 
@@ -64,6 +83,7 @@ class Robodart_vision():
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("UI122xLE_C/image_raw", Image, self.receive_image_from_camera_callback)
     self.cam_info  = rospy.Subscriber("UI122xLE_C/camera_info", CameraInfo, self.update_cam_info)
+    self.stream   = rospy.Publisher('robodart_vision/small_video_stream', Image)
     
   
   ''' ============================ '''
@@ -74,21 +94,96 @@ class Robodart_vision():
     self.ticker = value
     self.lock.release()
 
+  ''' ================================== '''
+  ''' Sets the StreamStatus, THREADSAVE! '''
+  ''' Valid values are:                  '''
+  ''' 0 - The originall image takes the  '''
+  '''     whole Stream                   '''
+  ''' 1 - The originall image is showen  '''
+  '''     in the upper left corner, an   '''
+  '''     image of the Resent event is   '''
+  '''     showen in the middle           '''
+  ''' ================================== '''
+  def setStreamStatus(self, value):
+    self.lock2.acquire()
+    self.streamTicker = value
+    self.lock2.release()
+
   ''' ================================= '''
   ''' Callback for Raw_Image_Node (ros) '''
   ''' ================================= '''
   def receive_image_from_camera_callback(self, data):
     try:
       cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
+
       self.frame = cv_image
-      showImage = cv.CreateMat(self.LiveCaptureSize[1], self.LiveCaptureSize[0], cv.CV_8UC3)
-      cv.Resize( cv_image, showImage);
+      
+      showImage = cv.CreateMat(self.LiveCaptureSize[1], self.LiveCaptureSize[0], cv.CV_8UC3)      
+      cv.Resize( cv_image, showImage)
       cv.ShowImage("cam window", showImage)
+      
+      # Publish own Stream
+      start = time.time()
+      #for testings:
+      self.eventImage = cv_image
+      self.publish_stream()
+      duration = time.time() - start
+      print "It toke me ", duration*1000 , " MilliSeconds to Publish the Image"
       self.setTicker(True)
       cv.WaitKey(3)
     except CvBridgeError, e:
       print e
       
+ 
+  ''' ========================== '''
+  ''' Publishes the video Stream '''
+  ''' ========================== '''
+  def publish_stream(self):
+    self.counter = self.counter + 1
+    if self.counter != PublishRate:
+      return
+    self.counter = 0
+    try:      
+      streamImage = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], cv.CV_8UC3)
+      if self.streamTicker == 1 and self.eventImage is not None:
+        cv.Resize(self.eventImage, streamImage)
+        
+        smallImage = cv.CreateMat(self.StreamPiPSize[1], self.StreamPiPSize[0], cv.CV_8UC3)
+        notSoSmallImage = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], cv.CV_8UC3)
+        cv.Resize(streamImage, smallImage)
+
+        cv.Resize(smallImage, notSoSmallImage, cv.CV_INTER_AREA)
+        
+        streamImage = notSoSmallImage
+        
+        cv.Zero(notSoSmallImage)
+
+        
+        #copy smallImage data in an bigger Image:
+        for row in range(self.StreamPiPSize[1]):
+          for col in range(self.StreamPiPSize[0]):
+            notSoSmallImage[row,col] = smallImage[row,col]
+        
+
+        mask = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], cv.CV_8UC1)
+        cv.Zero(mask)
+
+        for row in range(self.StreamPiPSize[1]):
+          for col in range(self.StreamPiPSize[0]):
+            mask[row,col] = 255
+
+        cv.Copy(notSoSmallImage, streamImage, mask)
+         
+      else:
+        cv.Resize( self.frame, streamImage) 
+      
+      streamImage = self.bridge.cv_to_imgmsg(streamImage, "bgr8")
+      self.stream.publish(streamImage)
+    except CvBridgeError, e:
+      print e
+
+
+
   ''' =============================== '''
   ''' Callback for CamInfo_Node (ros) '''
   ''' =============================== '''
@@ -149,12 +244,12 @@ class Robodart_vision():
     print "get_dart_center_offset()..."
     #Test -------------------- 
     #currentFrame = self.frame
-    currentFrame = cv.LoadImageM("refpic.jpg")
+    currentFrame = cv.LoadImageM("refpic.png")
     circles = self.detect_circles(currentFrame, False)
     currentFrame = np.asarray(currentFrame)
     currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
     
-    currentFrame2 = cv.LoadImageM("refpic1.jpg")    
+    currentFrame2 = cv.LoadImageM("refpic1.png")    
     circles2 = self.detect_circles(currentFrame2, False)     
     currentFrame2 = np.asarray(currentFrame2)
     currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
@@ -250,7 +345,7 @@ class Robodart_vision():
         
     bitmapPic = cv.fromarray(bitmap[1])
     cv.SaveImage("div_threshold.jpg", bitmapPic)     
-
+    self.eventImage = bitmapPic
 
     counter = 0
     sumX = 0
@@ -313,9 +408,10 @@ class Robodart_vision():
       
       image = cv.fromarray(image)
       cv.SaveImage("CircleImage.png", image)
+      self.eventImage = image      
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
       cv.Resize( image, small);
-
+      
       #cv.ShowImage("Circles", small)
 
     return circles[0]
@@ -385,6 +481,7 @@ if __name__ == '__main__':
   bullseye = rospy.Service('robodart_vision/get_bullseye_center_offset', Point, my_robodart_vision.get_bullseye_center_offset)
   dart     = rospy.Service('robodart_vision/get_dart_center_offset', Point, my_robodart_vision.get_dart_center_offset)
   
-  print "All Services ready"
 
+  print "All Services ready"
+  
   rospy.spin()
