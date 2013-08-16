@@ -403,7 +403,7 @@ class Robodart_vision():
     circles =  cv2.HoughCircles(frameBlur, cv2.cv.CV_HOUGH_GRADIENT, dp, minDist, np.array([]), param1, param2, minRadius, maxRadius)  
 
     
-    if circles is not None:
+    #if circles is not None:
       #for c in circles[0]:
        # print c
     showImage = cv.fromarray(currentFrame)
