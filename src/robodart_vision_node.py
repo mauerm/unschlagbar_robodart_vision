@@ -228,19 +228,18 @@ class Robodart_vision():
   def get_bullseye_center_offset(self, req):
 
     print "get_bullseye_center_offset()..."
-    if self.ticker == True:    
-      currentFrame = self.frame
-      circles = self.detect_circles(currentFrame)
+  
+    currentFrame = self.frame
+    circles = self.detect_circles(currentFrame)
 
-      xMid = self.width / 2
-      yMid = self.height / 2
-      
-      avg = self.getAverageCircleMiddle(circles)
+    xMid = self.width / 2
+    yMid = self.height / 2
+    
+    avg = self.getAverageCircleMiddle(circles)
 
-      xDif = xMid - avg[0]
-      yDif = yMid - avg[1]
-      
-      self.setTicker(False)
+    xDif = xMid - avg[0]
+    yDif = yMid - avg[1]
+    
     return [-xDif/self.pixel_per_meter - self.camera_dart_offset[0], yDif/self.pixel_per_meter - self.camera_dart_offset[1]]
 
 
