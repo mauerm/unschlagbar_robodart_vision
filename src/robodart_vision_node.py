@@ -248,6 +248,9 @@ class Robodart_vision():
   ''' Calculates the Offset from the Dart to the Center of the Image '''
   ''' ============================================================== '''
   def get_dart_center_offset():
+
+    print "get_dart_center_offset()"
+
     dartboard = self.last_reference_picture
     dartboard_with_arrow = self.frame
 
@@ -307,7 +310,7 @@ class Robodart_vision():
     xPos = xPos + x
     yPos = yPos + y
 
-    print 'arrow at: ', xPos, 'x', yPos
+    #print 'arrow at: ', xPos, 'x', yPos
 
     xMid = self.width / 2
     yMid = self.hight / 2
@@ -338,8 +341,8 @@ class Robodart_vision():
     if circles is None:
       raise Exception("I didn't find any Circles in the Image.")
 
-    for c in circles[0]:
-      print c
+    #for c in circles[0]:
+      #print c
 
     if draw == True:
       for c in circles[0]:
@@ -402,8 +405,8 @@ class Robodart_vision():
 
     
     if circles is not None:
-      for c in circles[0]:
-        print c
+      #for c in circles[0]:
+       # print c
     showImage = cv.fromarray(currentFrame)
     cv.SaveImage("CircleImage.png", showImage)
     small = cv.CreateMat(showImage.rows / 4, showImage.cols / 4, cv.CV_8UC3)    
