@@ -19,33 +19,19 @@ import time
 
 class Robodart_vision():
    
-  lock =threading.Lock()
-  ticker = False
-
-  ''' StreamTicker: Shows the current status of the Stream 
-
-  Valid values are:
-    0 - The originall image takes the whole Stream
-    1 - The originall image is showen in the upper left corner, an image of the Resent event is showen in the middle
-
-  '''
-  lock2 = threading.Lock()
-  streamTicker = 1
-  eventImage = None
-  eventType = cv.CV_8UC3
-  counter = 0
-  PublishRate = 1 # Publishes every n-th frame
-
-
+  ''' ==================================================================== '''
+  ''' Dynamic Parameters. These may have to be adjusted at the RTL Studios '''
+  ''' ==================================================================== '''
   
+  ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
+  ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
   threshold_value = 60
   
-  board_radius = 156 #in pixel
-  board_radius_m = 0.5
 
-  LiveCaptureSize = [1400, 880]
-  StreamSize      = [640, 480]
-  StreamPiPSize   = [320, 240]
+  ''' The Publishrate for the Live picture in picture Image. '''
+  ''' It means that you publishes every n-th frame. Use it if this function takes to long '''
+  ''' The publish funktion is not Performance optimal '''
+  PublishRate = 1
 
   """
   This value is calculated by calling:
@@ -61,8 +47,45 @@ class Robodart_vision():
   If the gripper is positioned correctly above the bullseye.
   This value is returned by:
   rosservice call /robodart_vision/get_bullseye_center_offset
+  This also may be calculated by the arrow offset now.
   """
   camera_dart_offset = [-0.0175447854251, -0.0886680411396]
+
+  ''' The size of the Live Image showen by the Node itself'''
+  ''' HINT: FOR THE PUBLISHED STREAM TAKE THE VALUES StreamSize and StreamPiPSize below '''
+  LiveCaptureSize = [1400, 880]
+
+  ''' This is the total size of the Published stream '''
+  StreamSize      = [640, 480]
+
+  ''' This is the size of the smaller live Image in the upper left corner of the live stream'''
+  ''' Hint: Don't make this value to high becouse it costs a lot of performance with the current implementation '''
+  StreamPiPSize   = [320, 240]
+  
+  ''' StreamTicker: Shows the current status of the Stream 
+
+  Valid values are:
+    0 - The originall image takes the whole Stream
+    1 - The originall image is showen in the upper left corner, an image of the Resent event is showen in the middle
+  It can be set by setStreamStatus(value). This function is Thread Save
+  '''
+  streamTicker = 1
+  
+
+  ''' ==================================================================== '''
+  ''' ====================== END DYNAMIC PARAMETERS ====================== '''
+  ''' ==================================================================== '''
+
+  lock =threading.Lock()
+  ticker = False
+
+
+  lock2 = threading.Lock()
+  eventImage = None
+  eventType = cv.CV_8UC3
+  counter = 0  
+
+
 
   #10m offset [0.309408827795,-0.0363646297808]
 
@@ -89,6 +112,7 @@ class Robodart_vision():
     self.ticker = value
     self.lock.release()
 
+
   ''' ================================== '''
   ''' Sets the StreamStatus, THREADSAVE! '''
   ''' Valid values are:                  '''
@@ -103,6 +127,7 @@ class Robodart_vision():
     self.lock2.acquire()
     self.streamTicker = value
     self.lock2.release()
+
 
   ''' ================================= '''
   ''' Callback for Raw_Image_Node (ros) '''
@@ -181,6 +206,7 @@ class Robodart_vision():
     self.width = data.width
     self.height = data.height
 
+
   ''' ========================================== '''
   ''' Saves the Currentframe as ReferencePicture '''
   ''' ========================================== '''
@@ -195,6 +221,7 @@ class Robodart_vision():
     #self.showPicWithCircles(self.last_reference_picture)
     return []
     
+
   ''' ================================================================== '''
   ''' Calculates the Offset from the Bullseye to the Center of the Image '''
   ''' ================================================================== '''
@@ -216,123 +243,45 @@ class Robodart_vision():
       self.setTicker(False)
     return [-xDif/self.pixel_per_meter - self.camera_dart_offset[0], yDif/self.pixel_per_meter - self.camera_dart_offset[1]]
 
+
   ''' ============================================================== '''
   ''' Calculates the Offset from the Dart to the Center of the Image '''
   ''' ============================================================== '''
-  def get_dart_center_offset(self, req):
-    
+  def get_dart_center_offset():
+    dartboard = self.last_reference_picture
+    dartboard_with_arrow = self.frame
 
-    #xMid = self.width / 2
-    #yMid = self.height / 2
 
-    xMid = 1280
-    yMid = 960
-
-  
-    print "get_dart_center_offset()..."
-
-    #reset paras for circle detection
-    minRadius = 80 #Minimum circle radius.
-    maxRadius = 700#Maximum circle radius.
-
-    #Test -------------------- 
-    #currentFrame = self.frame
-    currentFrame = self.last_reference_picture
-    circles = self.detect_circles(currentFrame, False)
-    currentFrame = np.asarray(currentFrame)
-    currentFrame = cv2.cvtColor(currentFrame, cv2.COLOR_RGBA2GRAY)
-    self.set_circle_parameter_for_div()
-
-    currentFrame2 = self.frame 
-    circles2 = self.detect_circles(currentFrame2, False)     
-    currentFrame2 = np.asarray(currentFrame2)
-    currentFrame2 = cv2.cvtColor(currentFrame2, cv2.COLOR_RGBA2GRAY)
-
-    currentFrame = cv.fromarray(currentFrame)
-    currentFrame2 = cv.fromarray(currentFrame2)
-
-    self.set_circle_parameter_default()
-    
-    length = self.dartboard_radius_pixel 
-    lengthY1 = length
-    lengthX1 = length
-    lengthY2 = length
-    lengthX2 = length
-
-    
-    #Get Subimage1
+    #extract circle from the dartboard
+    circles = self.detect_circles(dartboard, False)
     avg = self.getAverageCircleMiddle(circles)
+
+
+    # Convert to GreyScale:
+    dartboard = cv2.cvtColor(dartboard, cv2.COLOR_RGBA2GRAY)
+    dartboard_with_arrow = cv2.cvtColor(dartboard_with_arrow, cv2.COLOR_RGBA2GRAY)
+
+
+    length = self.dartboard_radius_pixel * 2
     
-    xStart = avg[0] - self.dartboard_radius_pixel / 4
-    yStart = avg[1] - self.dartboard_radius_pixel / 4
+    xStart = avg[0] - self.dartboard_radius_pixel
+    yStart = avg[1] - self.dartboard_radius_pixel
 
+    template = dartboard[yStart:yStart+length, xStart:xStart+length]
 
-    print "--------------------------------------------------------"
-    print "Start at: ", xStart, "x", yStart
-    print "Length is: ", lengthX1, "x", lengthY1
-    print "So end is at: ", xStart+lengthX1, "x", yStart+lengthY1
-    print "My res is: ", currentFrame.cols, "x", currentFrame.rows
-    print "--------------------------------------------------------"
-
-
-    subframe = cv.GetSubRect(currentFrame, (int(xStart), int(yStart), int(length)/2, int(length)/2))
-    
-    
-    #Get Subimage2
-    avg2 = self.getAverageCircleMiddle(circles2)
-    
-    xStart2 = avg2[0] - self.dartboard_radius_pixel / 2
-    yStart2 = avg2[1] - self.dartboard_radius_pixel / 2
-
-    print "--------------------------------------------------------"
-    print "Start at: ", xStart2, "x", yStart2
-    print "Length is: ", lengthX2, "x", lengthY2
-    print "So end is at: ", xStart2+lengthX2, "x", yStart2+lengthY2
-    print "My res is: ", currentFrame2.cols, "x", currentFrame2.rows
-    print "--------------------------------------------------------"
-    
-    subframe2 = cv.GetSubRect(currentFrame2, (int(xStart2), int(yStart2), int(length), int(length)))   
-    cv.SaveImage("sub1.png", subframe)
-    cv.SaveImage("sub2.png", subframe2)
-    
-
-    subframe = np.asarray(subframe)
-    subframe2 = np.asarray(subframe)
-
-    result = cv2.matchTemplate(subframe,subframe2,cv.CV_TM_SQDIFF)
-    result = cv.fromarray(result)
+    # match template
+    result = cv2.matchTemplate(dartboard_with_arrow,template,cv2.TM_SQDIFF)
     (min_x,max_y,minloc,maxloc)=cv2.minMaxLoc(result)
-    print cv.MinMaxLoc(result)
-    (x,y)=minloc  
-    print x, " ", y  
+    (x, y) = minloc
 
-    subframe2a = cv.GetSubRect(subframe2, (int(x), int(y),int(length)/2, int(length)/2))
-    cv.SaveImage("sub2a.png", subframe2a) 
+    cut_from_dartboard = dartboard_with_arrow[y:y+len(template), x:x+len(template[0])]
+    cv2.imwrite("cut_from_dartboard.png", cut_from_dartboard) 
+    cv2.imwrite("template.png", template)
 
-    '''
-    if subframe.cols != subframe2.cols or subframe.rows != subframe2.rows:
-      print "What ... i have not the same length... "
-    
-    #Get Dif Image
-    div = cv.CreateMat(subframe.rows, subframe.cols, cv.CV_8UC1)
-    cv.AbsDiff(subframe, subframe2, div)
-    
-    
-    div = cv.CreateMat(currentFrame.rows, currentFrame.cols, cv.CV_8UC1)
-    
-    cv.SaveImage("img1.jpg", currentFrame)
-    cv.SaveImage("img2.jpg", currentFrame2)
-    
-    cv.AbsDiff(currentFrame, currentFrame2, div)
-    
-    cv.SaveImage("div1.jpg", div)
+    div = cv2.absdiff(template, cut_from_dartboard)
+    cv2.imwrite("div.png", div)
 
-    div = np.asarray(div)    
-
-    #cv2.threshold(currentFrame, bitmap, self.threshold_value, 255, 3)
     bitmap = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)
-
-        
     bitmapPic = cv.fromarray(bitmap[1])
     cv.SaveImage("div_threshold.jpg", bitmapPic)     
 
@@ -355,30 +304,27 @@ class Robodart_vision():
     xPos = sumX / counter
     yPos = sumY / counter
 
-    xPos = xPos + xStart
-    yPos = yPos + yStart
+    xPos = xPos + x
+    yPos = yPos + y
 
     print 'arrow at: ', xPos, 'x', yPos
 
+    xMid = self.width / 2
+    yMid = self.hight / 2
+    
     xOffset = xMid - xPos
     yOffset = yMid - yPos
-  
+
     xOffsetMeter = xOffset / self.pixel_per_meter
     yOffsetMeter = yOffset / self.pixel_per_meter
-  
-    #print bitmapPic.getData()
 
+    cv2.circle(dartboard_with_arrow,(int(xPos),int(yPos)),10, (255,255, 255),10)
+    cv2.imwrite("dartboard_with_detected_arrow.png", dartboard_with_arrow)
+    self.event_image = dartboard_with_arrow
 
-
-    #cv2.waitKey(20)
-    
-    #end test---------------------
-    temp = np.asarray(self.eventImage)
-    cv2.circle(temp,(int(xPos),int(yPos)),20, (255,255, 255),20)
-    self.eventImage = cv.fromarray(temp)
     return [xOffsetMeter - self.camera_dart_offset[0], yOffsetMeter - self.camera_dart_offset[1]]
-    '''
-    return [0,0]
+
+
   ''' ========================================== '''
   ''' Returns an Array with all Detected Circles '''
   ''' ========================================== '''
@@ -434,6 +380,7 @@ class Robodart_vision():
 
     return [xAvg, yAvg]
 
+
   ''' =============================================== '''
   ''' Displayes the Picture with all detected Circles '''
   ''' OBSOLETED!!! USE detect_circles instead         '''
@@ -463,6 +410,7 @@ class Robodart_vision():
     cv.Resize( showImage, small);
     cv.ShowImage(windowName, small)
 
+  ''' Sets circle detection Parameters '''  
   def set_circle_parameter_default(self):
     self.BGsample = 30 #number of frames to gather BG samples (average) from at start of capture
     self.circle_sample= 50 #number of Circles for calculate center
@@ -475,15 +423,6 @@ class Robodart_vision():
     self.minRadius = 80 #Minimum circle radius.
     self.maxRadius = 700#Maximum circle radius.
 
-  def set_circle_parameter_for_div(self):
-    self.BGsample = 30 
-    self.circle_sample= 200
-    self.dp = 1
-    self.minDist = 10 
-    self.param1 = 40 
-    self.param2 = 300 
-    self.minRadius = 80 #Minimum circle radius.
-    self.maxRadius = 400#Maximum circle radius.
 
 
 if __name__ == '__main__':
