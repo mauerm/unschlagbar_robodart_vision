@@ -9,7 +9,7 @@ import sys
 import cv2
 import cv
 from std_srvs.srv import Empty
-from robodart_vision.srv import Point
+from robodart_vision.srv import Point, SetOffset
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CameraInfo
 import threading
@@ -22,16 +22,6 @@ class Robodart_vision():
   ''' ==================================================================== '''
   ''' Dynamic Parameters. These may have to be adjusted at the RTL Studios '''
   ''' ==================================================================== '''
-  
-  ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
-  ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
-  threshold_value = 60
-  
-
-  ''' The Publishrate for the Live picture in picture Image. '''
-  ''' It means that you publishes every n-th frame. Use it if this function takes to long '''
-  ''' The publish funktion is not Performance optimal '''
-  PublishRate = 1
 
   """
   This value is calculated by calling:
@@ -49,7 +39,19 @@ class Robodart_vision():
   rosservice call /robodart_vision/get_bullseye_center_offset
   This also may be calculated by the arrow offset now.
   """
-  camera_dart_offset = [-0.0175447854251, -0.0886680411396]
+  camera_dart_offset = [0, 0]
+
+  
+  ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
+  ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
+  threshold_value = 60
+  
+
+  ''' The Publishrate for the Live picture in picture Image. '''
+  ''' It means that you publishes every n-th frame. Use it if this function takes to long '''
+  ''' The publish funktion is not Performance optimal '''
+  PublishRate = 1
+
 
   ''' The size of the Live Image showen by the Node itself'''
   ''' HINT: FOR THE PUBLISHED STREAM TAKE THE VALUES StreamSize and StreamPiPSize below '''
@@ -92,10 +94,10 @@ class Robodart_vision():
   dartboard_radius_meter = 0.23 # Radius der Scheibe in Meter
   #dartboard_radius_pixel = 642 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
+  last_reference_picture = None
 
   def __init__(self):
     #cv2.namedWindow("Image window", 1)
-    cv2.namedWindow("test", 1 )
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("UI122xLE_C/image_raw", Image, self.receive_image_from_camera_callback)
     self.cam_info  = rospy.Subscriber("UI122xLE_C/camera_info", CameraInfo, self.update_cam_info)
@@ -246,12 +248,15 @@ class Robodart_vision():
   ''' ============================================================== '''
   ''' Calculates the Offset from the Dart to the Center of the Image '''
   ''' ============================================================== '''
-  def get_dart_center_offset():
+  def get_dart_center_offset(self, req):
 
     print "get_dart_center_offset()"
 
-    dartboard = self.last_reference_picture
-    dartboard_with_arrow = self.frame
+    if self.last_reference_picture is None:
+      raise Exception("The function take_reference_picture was not called")
+
+    dartboard = np.asarray(self.last_reference_picture)
+    dartboard_with_arrow = np.asarray(self.frame)
 
 
     #extract circle from the dartboard
@@ -312,7 +317,7 @@ class Robodart_vision():
     #print 'arrow at: ', xPos, 'x', yPos
 
     xMid = self.width / 2
-    yMid = self.hight / 2
+    yMid = self.height / 2
     
     xOffset = xMid - xPos
     yOffset = yMid - yPos
@@ -325,6 +330,14 @@ class Robodart_vision():
     self.event_image = dartboard_with_arrow
 
     return [xOffsetMeter - self.camera_dart_offset[0], yOffsetMeter - self.camera_dart_offset[1]]
+
+
+
+  def set_camera_dart_offset(self, data):
+    self.camera_dart_offset[0] = data.x
+    self.camera_dart_offset[1] = data.y
+    print "Offset is now: ",self.camera_dart_offset
+    return []
 
 
   ''' ========================================== '''
@@ -383,6 +396,7 @@ class Robodart_vision():
     return [xAvg, yAvg]
 
 
+
   ''' =============================================== '''
   ''' Displayes the Picture with all detected Circles '''
   ''' OBSOLETED!!! USE detect_circles instead         '''
@@ -438,6 +452,7 @@ if __name__ == '__main__':
   ref_pic  = rospy.Service('robodart_vision/take_reference_picture', Empty, my_robodart_vision.take_reference_picture)
   bullseye = rospy.Service('robodart_vision/get_bullseye_center_offset', Point, my_robodart_vision.get_bullseye_center_offset)
   dart     = rospy.Service('robodart_vision/get_dart_center_offset', Point, my_robodart_vision.get_dart_center_offset)
+  camOffset = rospy.Service('robodart_vision/set_camera_dart_offset', SetOffset, my_robodart_vision.set_camera_dart_offset)
   
 
   print "All Services ready"
