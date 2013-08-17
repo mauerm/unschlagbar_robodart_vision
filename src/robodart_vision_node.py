@@ -34,10 +34,7 @@ class Robodart_vision():
   pixel_per_meter = (3171.610107467 + 3187.109581013 + 3174.027275773) / 3
 
   """
-  If the gripper is positioned correctly above the bullseye.
-  This value is returned by:
-  rosservice call /robodart_vision/get_bullseye_center_offset
-  This also may be calculated by the arrow offset now.
+  This value is calculated by get_dart_center_offset and is set by robodart_control
   """
   camera_dart_offset = [0, 0]
 
