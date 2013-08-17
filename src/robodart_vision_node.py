@@ -449,7 +449,7 @@ if __name__ == '__main__':
   ref_pic  = rospy.Service('robodart_vision/take_reference_picture', Empty, my_robodart_vision.take_reference_picture)
   bullseye = rospy.Service('robodart_vision/get_bullseye_center_offset', Point, my_robodart_vision.get_bullseye_center_offset)
   dart     = rospy.Service('robodart_vision/get_dart_center_offset', Point, my_robodart_vision.get_dart_center_offset)
-  camOffset = rospy.Service('robodart_vision/set_camera_dart_offset', SetOffset, my_robodart_vision.set_camera_dart_offset)
+  camOffset = rospy.Service('robodart_vision/set_camera_dart_offset', Point, my_robodart_vision.set_camera_dart_offset)
   
 
   print "All Services ready"
