@@ -36,6 +36,7 @@ class Robodart_vision():
   """
   This value is calculated by get_dart_center_offset and is set by robodart_control
   """
+  #10m offset [0.309408827795,-0.0363646297808]
   camera_dart_offset = [0, 0]
 
   
@@ -84,12 +85,8 @@ class Robodart_vision():
   eventType = cv.CV_8UC3
   counter = 0  
 
-
-
-  #10m offset [0.309408827795,-0.0363646297808]
-
   dartboard_radius_meter = 0.23 # Radius der Scheibe in Meter
-  #dartboard_radius_pixel = 642 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
+  dartboard_radius_pixel = 0 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
   last_reference_picture = None
 
@@ -285,6 +282,7 @@ class Robodart_vision():
     div = cv2.absdiff(template, cut_from_dartboard)
     cv2.imwrite("div.png", div)
 
+    #threshold(src, threshold, pixel_color_if_above_threshold, thresholdType)
     bitmap = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)
     bitmapPic = cv.fromarray(bitmap[1])
     cv.SaveImage("div_threshold.jpg", bitmapPic)     
