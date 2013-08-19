@@ -89,9 +89,15 @@ class Robodart_vision():
   dartboard_radius_pixel = 0 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
   last_reference_picture = None
+  
+  self.package_dir = None
 
   def __init__(self):
     #cv2.namedWindow("Image window", 1)
+    
+    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/'
+    print "Package dir = ", self.package_dir
+    
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("UI122xLE_C/image_raw", Image, self.receive_image_from_camera_callback)
     self.cam_info  = rospy.Subscriber("UI122xLE_C/camera_info", CameraInfo, self.update_cam_info)
@@ -212,7 +218,7 @@ class Robodart_vision():
     
     #cv.ShowImage("Image", currentFrame)
 
-    cv.SaveImage("refpic.png", self.last_reference_picture)
+    cv.SaveImage(self.package_dir + "refpic.png", self.last_reference_picture)
 
     #self.showPicWithCircles(self.last_reference_picture)
     return []
@@ -276,16 +282,16 @@ class Robodart_vision():
     (x, y) = minloc
 
     cut_from_dartboard = dartboard_with_arrow[y:y+len(template), x:x+len(template[0])]
-    cv2.imwrite("cut_from_dartboard.png", cut_from_dartboard) 
-    cv2.imwrite("template.png", template)
+    cv2.imwrite(self.package_dir + "cut_from_dartboard.png", cut_from_dartboard) 
+    cv2.imwrite(self.package_dir + "template.png", template)
 
     div = cv2.absdiff(template, cut_from_dartboard)
-    cv2.imwrite("div.png", div)
+    cv2.imwrite(self.package_dir + "div.png", div)
 
     #threshold(src, threshold, pixel_color_if_above_threshold, thresholdType)
     bitmap = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)
     bitmapPic = cv.fromarray(bitmap[1])
-    cv.SaveImage("div_threshold.jpg", bitmapPic)     
+    cv.SaveImage(self.package_dir + "div_threshold.jpg", bitmapPic)     
 
 
     counter = 0
@@ -321,7 +327,7 @@ class Robodart_vision():
     yOffsetMeter = yOffset / self.pixel_per_meter
 
     cv2.circle(dartboard_with_arrow,(int(xPos),int(yPos)),10, (255,255, 255),10)
-    cv2.imwrite("dartboard_with_detected_arrow.png", dartboard_with_arrow)
+    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
     self.event_image = dartboard_with_arrow
 
     return [xOffsetMeter - self.camera_dart_offset[0], yOffsetMeter - self.camera_dart_offset[1]]
@@ -357,7 +363,7 @@ class Robodart_vision():
         cv2.circle(image,(c[0],c[1]),1, (0,255,0),2)
       
       image = cv.fromarray(image)
-      cv.SaveImage("CircleImage.png", image)
+      cv.SaveImage(self.package_dir + "CircleImage.png", image)
       self.eventImage = image  
       self.eventType = cv.CV_8UC3    
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
@@ -416,7 +422,7 @@ class Robodart_vision():
       #for c in circles[0]:
        # print c
     showImage = cv.fromarray(currentFrame)
-    cv.SaveImage("CircleImage.png", showImage)
+    cv.SaveImage(self.package_dir + "CircleImage.png", showImage)
     small = cv.CreateMat(showImage.rows / 4, showImage.cols / 4, cv.CV_8UC3)    
     cv.Resize( showImage, small);
     cv.ShowImage(windowName, small)
