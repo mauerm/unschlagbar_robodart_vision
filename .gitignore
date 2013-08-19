@@ -9,3 +9,14 @@ build/*
 bin/*
 lib/*
 srv_gen/*
+
+#ignore eclipse files
+.cproject
+.project
+.pydevproject
+CATKIN_IGNORE
+catkin/
+catkin_generated/
+cmake_install.cmake
+devel/
+gtest/
