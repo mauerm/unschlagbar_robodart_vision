@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-PACKAGE='robodart'
+PACKAGE='robodart_vision'
 import roslib
 #roslib.load_manifest(PACKAGE)
 import rospy
@@ -90,12 +90,12 @@ class Robodart_vision():
 
   last_reference_picture = None
   
-  self.package_dir = None
+  package_dir = None
 
   def __init__(self):
     #cv2.namedWindow("Image window", 1)
     
-    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/'
+    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/'
     print "Package dir = ", self.package_dir
     
     self.bridge = CvBridge()
