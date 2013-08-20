@@ -10,6 +10,8 @@ bin/*
 lib/*
 srv_gen/*
 
+temp_images/
+
 #ignore eclipse files
 .cproject
 .project
@@ -20,3 +22,4 @@ catkin_generated/
 cmake_install.cmake
 devel/
 gtest/
+
