@@ -289,19 +289,35 @@ class Robodart_vision():
     cv2.imwrite(self.package_dir + "div.png", div)
 
     #threshold(src, threshold, pixel_color_if_above_threshold, thresholdType)
-    bitmap = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)
-    bitmapPic = cv.fromarray(bitmap[1])
-    cv.SaveImage(self.package_dir + "div_threshold.jpg", bitmapPic)     
+    (retval, dst) = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)  
 
+    #binary_pic = cv.fromarray(binary_threshold[1])
+    #cv.SaveImage(self.package_dir + "div_threshold.jpg", binary_threshold)
+
+    cv2.imwrite(self.package_dir + "binary_threshold.png", dst)
+
+
+    element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    eroded = cv2.erode(dst, element)
+
+    cv2.imwrite(self.package_dir + "eroded.png", eroded)
+
+    dilated = cv2.dilate(eroded, element)
+
+    cv2.imwrite(self.package_dir + "dilated.png", dilated)
+
+    dilated_mat = cv.fromarray(dilated)
+
+    
 
     counter = 0
     sumX = 0
     sumY = 0    
 
-    for col in range(bitmapPic.cols):
-      for row in range(bitmapPic.rows):
-        if bitmapPic[row, col] != 0.0:        
-          #print bitmapPic[row,col], '  at: ', row, 'x', col
+    for col in range(dilated_mat.cols):
+      for row in range(dilated_mat.rows):
+        if dilated_mat[row, col] != 0.0:        
+          #print dilated[row,col], '  at: ', row, 'x', col
           counter = counter + 1
           sumX = sumX + col
           sumY = sumY + row
@@ -330,7 +346,7 @@ class Robodart_vision():
     cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
     self.event_image = dartboard_with_arrow
 
-    return [xOffsetMeter - self.camera_dart_offset[0], yOffsetMeter - self.camera_dart_offset[1]]
+    return [xOffsetMeter, yOffsetMeter]
 
 
 
