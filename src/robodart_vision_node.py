@@ -23,6 +23,8 @@ class Robodart_vision():
   ''' Dynamic Parameters. These may have to be adjusted at the RTL Studios '''
   ''' ==================================================================== '''
 
+
+
   """
   This value is calculated by calling:
   rosservice call /robodart_vision/get_bullseye_center_offset
@@ -70,7 +72,6 @@ class Robodart_vision():
   It can be set by setStreamStatus(value). This function is Thread Save
   '''
   streamTicker = 1
-  
 
   ''' ==================================================================== '''
   ''' ====================== END DYNAMIC PARAMETERS ====================== '''
@@ -239,10 +240,16 @@ class Robodart_vision():
     
     avg = self.getAverageCircleMiddle(circles)
 
-    xDif = xMid - avg[0]
-    yDif = yMid - avg[1]
+    xDiff = xMid - avg[0]
+    yDiff = yMid - avg[1]
     
-    return [-xDif/self.pixel_per_meter - self.camera_dart_offset[0], yDif/self.pixel_per_meter - self.camera_dart_offset[1]]
+    xDiffInMeter = xDiff / self.pixel_per_meter
+    yDiffInMeter = yDiff / self.pixel_per_meter
+    
+    xDiffInRobotFrame = xDiffInMeter
+    yDiffInRobotFrame = -yDiffInMeter
+    
+    return [xDiffInRobotFrame + self.camera_dart_offset[0], yDiffInRobotFrame + self.camera_dart_offset[1]]
 
 
   ''' ============================================================== '''
@@ -256,7 +263,10 @@ class Robodart_vision():
       raise Exception("The function take_reference_picture was not called")
 
     dartboard = np.asarray(self.last_reference_picture)
+    
+    
     dartboard_with_arrow = np.asarray(self.frame)
+  
 
 
     #extract circle from the dartboard
@@ -306,47 +316,40 @@ class Robodart_vision():
 
     cv2.imwrite(self.package_dir + "dilated.png", dilated)
 
-    dilated_mat = cv.fromarray(dilated)
+    (y,x,rgb) = np.nonzero(dilated > 0)
 
+    '''
+    0,0 is in the left top corner of the image, y are rows, x are cols
+    '''
+    y_median = np.median(y)
+    x_median = np.median(x)
     
-
-    counter = 0
-    sumX = 0
-    sumY = 0    
-
-    for col in range(dilated_mat.cols):
-      for row in range(dilated_mat.rows):
-        if dilated_mat[row, col] != 0.0:        
-          #print dilated[row,col], '  at: ', row, 'x', col
-          counter = counter + 1
-          sumX = sumX + col
-          sumY = sumY + row
-
-    if counter == 0:
-      raise Exception("The images are exactly the same after the Trashhold! Maybe adjust Trashhold")
-
-    xPos = sumX / counter
-    yPos = sumY / counter
-
-    xPos = xPos + x
-    yPos = yPos + y
-
+    cv2.circle(dilated,(int(x_median),int(y_median)),10, (255,255, 255),10)
+    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dilated)
+  
+    xPos = x_median + x
+    yPos = y_median + y
+    
     #print 'arrow at: ', xPos, 'x', yPos
-
+    
+    #TODO: check width and height
     xMid = self.width / 2
     yMid = self.height / 2
     
-    xOffset = xMid - xPos
-    yOffset = yMid - yPos
-
+    xOffset = xPos - xMid
+    yOffset = yPos - yMid
+    
     xOffsetMeter = xOffset / self.pixel_per_meter
     yOffsetMeter = yOffset / self.pixel_per_meter
-
-    cv2.circle(dartboard_with_arrow,(int(xPos),int(yPos)),10, (255,255, 255),10)
-    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
-    self.event_image = dartboard_with_arrow
-
-    return [xOffsetMeter, yOffsetMeter]
+  
+    #set image for stream
+    self.event_image = dilated
+    
+    #Conversion from image coordinate system to robot coordinate system
+    xOffsetInRobotFrame = xOffsetMeter
+    yOffestInRobotFrame = -yOffsetMeter
+    
+    return [xOffsetInRobotFrame, yOffestInRobotFrame]
 
 
 
