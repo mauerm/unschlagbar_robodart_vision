@@ -86,12 +86,14 @@ class Robodart_vision():
   eventType = cv.CV_8UC3
   counter = 0  
 
-  dartboard_radius_meter = 0.23 # Radius der Scheibe in Meter
+  dartboard_radius_meter = 0.20 #0.23 # Radius der Scheibe in Meter
   dartboard_radius_pixel = 0 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
   last_reference_picture = None
   
   package_dir = None
+  
+  log_file = None
 
   def __init__(self):
     #cv2.namedWindow("Image window", 1)
@@ -105,6 +107,8 @@ class Robodart_vision():
     self.stream   = rospy.Publisher('robodart_vision/small_video_stream', Image)
     self.dartboard_radius_pixel = self.pixel_per_meter * self.dartboard_radius_meter
     self.set_circle_parameter_default()
+    
+    log_file = open(roslib.packages.get_pkg_dir(PACKAGE) + '/log_file.log', 'a+')
   
 
   ''' ============================ '''
@@ -239,6 +243,11 @@ class Robodart_vision():
     yMid = self.height / 2
     
     avg = self.getAverageCircleMiddle(circles)
+    
+    numpy_currentFrame = np.asarray(currentFrame)
+    
+    cv2.circle(numpy_currentFrame,(int(avg[0]),int(avg[1])),10, (255,255, 255),10)
+    cv2.imwrite(self.package_dir + "dartboard_with_detected_center.png", numpy_currentFrame)
 
     xDiff = xMid - avg[0]
     yDiff = yMid - avg[1]
@@ -248,8 +257,10 @@ class Robodart_vision():
     
     xDiffInRobotFrame = xDiffInMeter
     yDiffInRobotFrame = -yDiffInMeter
-    
-    return [xDiffInRobotFrame + self.camera_dart_offset[0], yDiffInRobotFrame + self.camera_dart_offset[1]]
+
+
+    #TODO: check
+    return [xDiffInRobotFrame - self.camera_dart_offset[0], yDiffInRobotFrame - self.camera_dart_offset[1]]
 
 
   ''' ============================================================== '''
@@ -263,100 +274,149 @@ class Robodart_vision():
       raise Exception("The function take_reference_picture was not called")
 
     dartboard = np.asarray(self.last_reference_picture)
-    
-    
-    dartboard_with_arrow = np.asarray(self.frame)
-  
 
+    dartboard_with_arrow = np.asarray(self.frame)
 
     #extract circle from the dartboard
     circles = self.detect_circles(dartboard, False)
-    avg = self.getAverageCircleMiddle(circles)
+    detected_middle = self.getAverageCircleMiddle(circles)
 
+    
 
     # Convert to GreyScale:
     dartboard = cv2.cvtColor(dartboard, cv2.COLOR_RGBA2GRAY)
     dartboard_with_arrow = cv2.cvtColor(dartboard_with_arrow, cv2.COLOR_RGBA2GRAY)
 
 
+    cv2.imwrite(self.package_dir + "dartboard_full_grey.png", dartboard) 
+    #TODO: somewhere around here make a circular mask to get rid of the reflections
+
     length = self.dartboard_radius_pixel * 2
     
-    xStart = avg[0] - self.dartboard_radius_pixel
-    yStart = avg[1] - self.dartboard_radius_pixel
+    xStart = detected_middle[0] - self.dartboard_radius_pixel
+    yStart = detected_middle[1] - self.dartboard_radius_pixel
 
-    template = dartboard[yStart:yStart+length, xStart:xStart+length]
+    xEnd = xStart+length
+    yEnd = yStart+length
+    
+    '''TODO check this and the block below if its needed, 
+    check why template is not created probably if dartboard is at the side of camera view'''
+    #Avoid Error if image is too small to cut out the whole template
+    if xEnd > len(dartboard[0]):
+      xEnd = len(dartboard[0])-1
+    if yEnd > len(dartboard):
+      yEnd = len(dartboard)-1
 
-    # match template
-    result = cv2.matchTemplate(dartboard_with_arrow,template,cv2.TM_SQDIFF)
-    (min_x,max_y,minloc,maxloc)=cv2.minMaxLoc(result)
-    (x, y) = minloc
+    template = dartboard[yStart:yEnd, xStart:xEnd]
 
-    cut_from_dartboard = dartboard_with_arrow[y:y+len(template), x:x+len(template[0])]
-    cv2.imwrite(self.package_dir + "cut_from_dartboard.png", cut_from_dartboard) 
     cv2.imwrite(self.package_dir + "template.png", template)
+    cv2.imwrite(self.package_dir + "dartboard_with_arrow.png", dartboard_with_arrow) 
+    
+    # match template
+    try:
+      result = cv2.matchTemplate(dartboard_with_arrow,template,cv2.TM_SQDIFF)
+    except:
+      print "Unexpected error: see template.png and dartboard_with_arrow.png", sys.exc_info()[0]
+      return [0,0]
+
+    (min_x,max_y,minloc,maxloc)=cv2.minMaxLoc(result)
+    (min_loc_x, min_loc_y) = minloc
+    
+    xEnd = min_loc_x+length
+    yEnd = min_loc_y+length
+    
+    #Avoid Error if image is too small to cut out the whole template
+    if xEnd > len(dartboard_with_arrow[0]):
+      xEnd = len(dartboard_with_arrow[0])-1
+    if yEnd > len(dartboard_with_arrow):
+      yEnd = len(dartboard_with_arrow)-1
+
+    cut_from_dartboard = dartboard_with_arrow[min_loc_y:yEnd, min_loc_x:xEnd]
+    cv2.imwrite(self.package_dir + "cut_from_dartboard.png", cut_from_dartboard) 
+    
 
     div = cv2.absdiff(template, cut_from_dartboard)
     cv2.imwrite(self.package_dir + "div.png", div)
 
     #threshold(src, threshold, pixel_color_if_above_threshold, thresholdType)
-    (retval, dst) = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)  
+    (retval, binary_threshold) = cv2.threshold(div, self.threshold_value, 255, cv2.THRESH_BINARY)  
 
     #binary_pic = cv.fromarray(binary_threshold[1])
     #cv.SaveImage(self.package_dir + "div_threshold.jpg", binary_threshold)
 
-    cv2.imwrite(self.package_dir + "binary_threshold.png", dst)
+    cv2.imwrite(self.package_dir + "binary_threshold.png", binary_threshold)
 
 
-    element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
-    eroded = cv2.erode(dst, element)
+    #element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    #eroded = cv2.erode(binary_threshold, element)
 
-    cv2.imwrite(self.package_dir + "eroded.png", eroded)
+    #cv2.imwrite(self.package_dir + "eroded.png", eroded)
 
-    dilated = cv2.dilate(eroded, element)
+    #dilated = cv2.dilate(eroded, element)
 
-    cv2.imwrite(self.package_dir + "dilated.png", dilated)
+    #cv2.imwrite(self.package_dir + "dilated.png", dilated)
 
-    (y,x,rgb) = np.nonzero(dilated > 0)
+    (y_non_zero_array,x_non_zero_array) = np.nonzero(binary_threshold > 0)
+    
 
     '''
-    0,0 is in the left top corner of the image, y are rows, x are cols
+    0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
     '''
-    y_median = np.median(y)
-    x_median = np.median(x)
     
-    cv2.circle(dilated,(int(x_median),int(y_median)),10, (255,255, 255),10)
-    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dilated)
-  
-    xPos = x_median + x
-    yPos = y_median + y
+    if len(x_non_zero_array) > 0:
+      y_median = np.median(y_non_zero_array)
+      x_median = np.median(x_non_zero_array)
+    else:
+      print 'No Dart detected, has a Dart been dropped?'
+      return [0,0]
     
-    #print 'arrow at: ', xPos, 'x', yPos
+    print 'x_median' , x_median
+
+    xPos = x_median + min_loc_x
+    yPos = y_median + min_loc_y
     
-    #TODO: check width and height
-    xMid = self.width / 2
-    yMid = self.height / 2
+    cv2.circle(dartboard_with_arrow,(int(xPos),int(yPos)),10, (255,255, 255),10) #white
+
+    print 'x_median + min_loc_x' , x_median
     
-    xOffset = xPos - xMid
-    yOffset = yPos - yMid
+    cv2.circle(dartboard_with_arrow,(int(detected_middle[0]),int(detected_middle[1])),10, (255,0, 0),10) #red
     
-    xOffsetMeter = xOffset / self.pixel_per_meter
-    yOffsetMeter = yOffset / self.pixel_per_meter
+    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
+    
+    xOffset = xPos - detected_middle[0]
+    yOffset = yPos - detected_middle[1]
+    
+ 
+    
+    print 'Pixel per meter' , self.pixel_per_meter
+    print 'xOffset' , xOffset
+    print 'yOffset' , yOffset
+    
+    
+    #save bis hier
+    
+    xOffsetMeter = float(xOffset) / float(self.pixel_per_meter)
+    yOffsetMeter = float(yOffset) / float(self.pixel_per_meter)
   
     #set image for stream
-    self.event_image = dilated
+    self.event_image = binary_threshold
     
     #Conversion from image coordinate system to robot coordinate system
-    xOffsetInRobotFrame = xOffsetMeter
-    yOffestInRobotFrame = -yOffsetMeter
+    OffsetInRobotFrame = [0,0]
+    OffsetInRobotFrame[0] = xOffsetMeter
+    OffsetInRobotFrame[1] = -yOffsetMeter
     
-    return [xOffsetInRobotFrame, yOffestInRobotFrame]
+    print 'XYOffsetInRObotFrame' , xOffsetInRobotFrame, yOffestInRobotFrame
+    
+    return OffsetInRobotFrame
 
 
 
   def set_camera_dart_offset(self, data):
+    #TODO: change name
     self.camera_dart_offset[0] = data.x
     self.camera_dart_offset[1] = data.y
-    print "Offset is now: ",self.camera_dart_offset
+    print "Set offset to: ",self.camera_dart_offset
     return []
 
 
@@ -458,7 +518,6 @@ class Robodart_vision():
     self.param2 = 300 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
     self.minRadius = 80 #Minimum circle radius.
     self.maxRadius = 700#Maximum circle radius.
-
 
 
 if __name__ == '__main__':
