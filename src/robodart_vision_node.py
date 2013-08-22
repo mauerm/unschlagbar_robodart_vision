@@ -15,6 +15,7 @@ from sensor_msgs.msg import Image, CameraInfo
 import threading
 import os
 import time
+import datetime
 
 
 class Robodart_vision():
@@ -39,7 +40,7 @@ class Robodart_vision():
   This value is calculated by get_dart_center_offset and is set by robodart_control
   """
   #10m offset [0.309408827795,-0.0363646297808]
-  camera_dart_offset = [0, 0]
+  camera_dart_offset = [0.0, 0.0]
 
   
   ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
@@ -86,19 +87,20 @@ class Robodart_vision():
   eventType = cv.CV_8UC3
   counter = 0  
 
-  dartboard_radius_meter = 0.20 #0.23 # Radius der Scheibe in Meter
+  dartboard_radius_meter = 0.16 #0.23 # Radius der Scheibe in Meter
   dartboard_radius_pixel = 0 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
   last_reference_picture = None
   
   package_dir = None
-  
-  log_file = None
+
 
   def __init__(self):
     #cv2.namedWindow("Image window", 1)
     
-    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/'
+    
+    timestamp = str(datetime.datetime.now())
+    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/timestamp'
     print "Package dir = ", self.package_dir
     
     self.bridge = CvBridge()
@@ -108,7 +110,7 @@ class Robodart_vision():
     self.dartboard_radius_pixel = self.pixel_per_meter * self.dartboard_radius_meter
     self.set_circle_parameter_default()
     
-    log_file = open(roslib.packages.get_pkg_dir(PACKAGE) + '/log_file.log', 'a+')
+    
   
 
   ''' ============================ '''
@@ -233,6 +235,9 @@ class Robodart_vision():
   ''' Calculates the Offset from the Bullseye to the Center of the Image '''
   ''' ================================================================== '''
   def get_bullseye_center_offset(self, req):
+    
+    timestamp = str(datetime.datetime.now())
+    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/'+ timestamp + '_'
 
     print "get_bullseye_center_offset()..."
   
@@ -268,7 +273,11 @@ class Robodart_vision():
   ''' ============================================================== '''
   def get_dart_center_offset(self, req):
 
+
     print "get_dart_center_offset()"
+    
+    timestamp = str(datetime.datetime.now())
+    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/'+ timestamp + '_'
 
     if self.last_reference_picture is None:
       raise Exception("The function take_reference_picture was not called")
@@ -291,7 +300,9 @@ class Robodart_vision():
     cv2.imwrite(self.package_dir + "dartboard_full_grey.png", dartboard) 
     #TODO: somewhere around here make a circular mask to get rid of the reflections
 
-    length = self.dartboard_radius_pixel * 2
+    length = int(self.dartboard_radius_pixel * 2)
+    
+    print 'length1', length
     
     xStart = detected_middle[0] - self.dartboard_radius_pixel
     yStart = detected_middle[1] - self.dartboard_radius_pixel
@@ -299,13 +310,17 @@ class Robodart_vision():
     xEnd = xStart+length
     yEnd = yStart+length
     
+    print 'length2', length
+    
     '''TODO check this and the block below if its needed, 
     check why template is not created probably if dartboard is at the side of camera view'''
     #Avoid Error if image is too small to cut out the whole template
+    '''
     if xEnd > len(dartboard[0]):
       xEnd = len(dartboard[0])-1
     if yEnd > len(dartboard):
       yEnd = len(dartboard)-1
+    '''
 
     template = dartboard[yStart:yEnd, xStart:xEnd]
 
@@ -322,16 +337,19 @@ class Robodart_vision():
     (min_x,max_y,minloc,maxloc)=cv2.minMaxLoc(result)
     (min_loc_x, min_loc_y) = minloc
     
-    xEnd = min_loc_x+length
-    yEnd = min_loc_y+length
+    xEndLoc = min_loc_x+length
+    yEndLoc = min_loc_y+length
+    
+    print 'length3', length
     
     #Avoid Error if image is too small to cut out the whole template
+    '''
     if xEnd > len(dartboard_with_arrow[0]):
       xEnd = len(dartboard_with_arrow[0])-1
     if yEnd > len(dartboard_with_arrow):
       yEnd = len(dartboard_with_arrow)-1
-
-    cut_from_dartboard = dartboard_with_arrow[min_loc_y:yEnd, min_loc_x:xEnd]
+    '''
+    cut_from_dartboard = dartboard_with_arrow[min_loc_y:yEndLoc, min_loc_x:xEndLoc]
     cv2.imwrite(self.package_dir + "cut_from_dartboard.png", cut_from_dartboard) 
     
 
@@ -406,7 +424,7 @@ class Robodart_vision():
     OffsetInRobotFrame[0] = xOffsetMeter
     OffsetInRobotFrame[1] = -yOffsetMeter
     
-    print 'XYOffsetInRObotFrame' , xOffsetInRobotFrame, yOffestInRobotFrame
+    print 'XYOffsetInRObotFrame' , OffsetInRobotFrame
     
     return OffsetInRobotFrame
 
