@@ -389,9 +389,9 @@ class Robodart_vision():
     0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
     '''
     
-    print "Number of detected Pixels: " , x_non_zero_array
+    print "Number of detected Pixels: " , len(x_non_zero_array)
     
-    if len(x_non_zero_array) > 5:
+    if len(x_non_zero_array) > 50:
       y_median = np.median(y_non_zero_array)
       x_median = np.median(x_non_zero_array)
     else:
