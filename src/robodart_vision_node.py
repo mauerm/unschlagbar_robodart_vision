@@ -34,7 +34,7 @@ class Robodart_vision():
   the measured radius of the circle.
   The last Value from about 10 Meter was: 2983.668489245
   """
-  pixel_per_meter = (3171.610107467 + 3187.109581013 + 3174.027275773) / 3
+  pixel_per_meter = (3164.234020619 + 3157.018378378 + 3204.0947040) / 3
 
   """
   This value is calculated by get_dart_center_offset and is set by robodart_control
@@ -253,15 +253,23 @@ class Robodart_vision():
     
     cv2.circle(numpy_currentFrame,(int(avg[0]),int(avg[1])),10, (255,255, 255),10)
     cv2.imwrite(self.package_dir + "dartboard_with_detected_center.png", numpy_currentFrame)
+    
+    print "xyMId", xMid, yMid
 
-    xDiff = xMid - avg[0]
-    yDiff = yMid - avg[1]
+    xDiff = avg[0] -xMid
+    yDiff = avg[1] -yMid
+    
+    print "xyDiffIn pixel", xDiff, yDiff
     
     xDiffInMeter = xDiff / self.pixel_per_meter
     yDiffInMeter = yDiff / self.pixel_per_meter
     
     xDiffInRobotFrame = xDiffInMeter
     yDiffInRobotFrame = -yDiffInMeter
+    
+    print "bullseye center offser: xyDiffInRobotFrame", xDiffInRobotFrame, yDiffInRobotFrame
+    
+    print "bullseye center offset: camera_dart_offset" ,self.camera_dart_offset
 
 
     #TODO: check
@@ -381,7 +389,9 @@ class Robodart_vision():
     0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
     '''
     
-    if len(x_non_zero_array) > 0:
+    print "Number of detected Pixels: " , x_non_zero_array
+    
+    if len(x_non_zero_array) > 5:
       y_median = np.median(y_non_zero_array)
       x_median = np.median(x_non_zero_array)
     else:
@@ -400,6 +410,7 @@ class Robodart_vision():
     cv2.circle(dartboard_with_arrow,(int(detected_middle[0]),int(detected_middle[1])),10, (255,0, 0),10) #red
     
     cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
+    
     
     xOffset = xPos - detected_middle[0]
     yOffset = yPos - detected_middle[1]
@@ -451,13 +462,14 @@ class Robodart_vision():
     if circles is None:
       raise Exception("I didn't find any Circles in the Image.")
 
-    #for c in circles[0]:
-      #print c
+    for c in circles[0]:
+      print c
 
     if draw == True:
       for c in circles[0]:
         cv2.circle(image, (c[0],c[1]),c[2], (0,255,0),2)
         cv2.circle(image,(c[0],c[1]),1, (0,255,0),2)
+
       
       image = cv.fromarray(image)
       cv.SaveImage(self.package_dir + "CircleImage.png", image)
@@ -465,6 +477,7 @@ class Robodart_vision():
       self.eventType = cv.CV_8UC3    
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
       cv.Resize( image, small);
+      
       
       #cv.ShowImage("Circles", small)
 
