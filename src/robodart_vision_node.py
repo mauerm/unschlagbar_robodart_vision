@@ -34,7 +34,7 @@ class Robodart_vision():
   the measured radius of the circle.
   The last Value from about 10 Meter was: 2983.668489245
   """
-  pixel_per_meter = (3164.234020619 + 3157.018378378 + 3204.0947040) / 3
+  pixel_per_meter = (3237.613333 + 3228.698113) / 2
 
   """
   This value is calculated by get_dart_center_offset and is set by robodart_control
@@ -391,9 +391,13 @@ class Robodart_vision():
     
     print "Number of detected Pixels: " , len(x_non_zero_array)
     
-    if len(x_non_zero_array) > 50:
+    #min_pixel_threshold = 50
+    #max_pixel_threshold = 1
+    
+    if len(x_non_zero_array) > min_pixel_threshold:
       y_median = np.median(y_non_zero_array)
       x_median = np.median(x_non_zero_array)
+    #if len(x_non_zero_array) 
     else:
       print 'No Dart detected, has a Dart been dropped?'
       return [0,0]
