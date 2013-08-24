@@ -394,7 +394,7 @@ class Robodart_vision():
     #min_pixel_threshold = 50
     #max_pixel_threshold = 1
     
-    if len(x_non_zero_array) > min_pixel_threshold:
+    if len(x_non_zero_array) > 50:
       y_median = np.median(y_non_zero_array)
       x_median = np.median(x_non_zero_array)
     #if len(x_non_zero_array) 
