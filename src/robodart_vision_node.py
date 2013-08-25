@@ -100,7 +100,7 @@ class Robodart_vision():
     
     
     timestamp = str(datetime.datetime.now())
-    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/timestamp'
+    self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/'+ timestamp + '_'
     print "Package dir = ", self.package_dir
     
     self.bridge = CvBridge()
@@ -384,23 +384,28 @@ class Robodart_vision():
 
     (y_non_zero_array,x_non_zero_array) = np.nonzero(binary_threshold > 0)
     
+    if len(x_non_zero_array) > 1000:
+      element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
+      eroded = cv2.erode(binary_threshold, element)
 
-    '''
-    0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
-    '''
-    
-    print "Number of detected Pixels: " , len(x_non_zero_array)
-    
-    #min_pixel_threshold = 50
-    #max_pixel_threshold = 1
-    
-    if len(x_non_zero_array) > 50:
-      y_median = np.median(y_non_zero_array)
-      x_median = np.median(x_non_zero_array)
-    #if len(x_non_zero_array) 
+      cv2.imwrite(self.package_dir + "eroded.png", eroded)
+      
+      (y_non_zero_array,x_non_zero_array) = np.nonzero(eroded > 0)
     else:
-      print 'No Dart detected, has a Dart been dropped?'
-      return [0,0]
+      '''
+      0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
+      '''
+      
+      
+      
+      if len(x_non_zero_array) < 50:
+        print 'No Dart detected, has a Dart been dropped?'
+        return [0,0]
+      
+    print "Number of detected Pixels: " , len(x_non_zero_array)
+      
+    y_median = np.median(y_non_zero_array)
+    x_median = np.median(x_non_zero_array)
     
     print 'x_median' , x_median
 
@@ -414,6 +419,15 @@ class Robodart_vision():
     cv2.circle(dartboard_with_arrow,(int(detected_middle[0]),int(detected_middle[1])),10, (255,0, 0),10) #red
     
     cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
+    
+    image = dartboard_with_arrow
+    
+    image = cv.fromarray(image)
+    #cv.SaveImage(self.package_dir + "CircleImage.png", image)
+    self.eventImage = image  
+    self.eventType = cv.CV_8UC3    
+    small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
+    cv.Resize( image, small);
     
     
     xOffset = xPos - detected_middle[0]
@@ -474,13 +488,14 @@ class Robodart_vision():
         cv2.circle(image, (c[0],c[1]),c[2], (0,255,0),2)
         cv2.circle(image,(c[0],c[1]),1, (0,255,0),2)
 
-      
+      '''
       image = cv.fromarray(image)
       cv.SaveImage(self.package_dir + "CircleImage.png", image)
       self.eventImage = image  
       self.eventType = cv.CV_8UC3    
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
       cv.Resize( image, small);
+      '''
       
       
       #cv.ShowImage("Circles", small)
