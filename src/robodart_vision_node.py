@@ -33,8 +33,21 @@ class Robodart_vision():
   Devide the 3rd value shown by robodart_vision node for the corresponding circle by
   the measured radius of the circle.
   The last Value from about 10 Meter was: 2983.668489245
+  
+  Aussendruchmesser von Kreis:
+  1 0.45
+  2 0.37
+  3 0.325
+  4 0.281
+  5 0.237
+  6 0.194
+  7 0.15
+  8 0.106
+  9 0.0611
   """
-  pixel_per_meter = (3237.613333 + 3228.698113) / 2
+  circle_radius = [0, 0.225, 0.185, 0.1625, 0.1405, 0.1185, 0.097, 0.075, 0.053, 0.03055]
+  pixel_per_meter = (1213.138 + 1206.6 + 1205.946) / 3
+  #pixel_per_meter = 3543.216
 
   """
   This value is calculated by get_dart_center_offset and is set by robodart_control
@@ -87,7 +100,7 @@ class Robodart_vision():
   eventType = cv.CV_8UC3
   counter = 0  
 
-  dartboard_radius_meter = 0.16 #0.23 # Radius der Scheibe in Meter
+  dartboard_radius_meter = 0.23 #0.23 # Radius der Scheibe in Meter
   dartboard_radius_pixel = 0 # Radius der Scheibe in Pixel, wird spaeter aus pixel_per_meter berechnet
 
   last_reference_picture = None
@@ -384,25 +397,25 @@ class Robodart_vision():
 
     (y_non_zero_array,x_non_zero_array) = np.nonzero(binary_threshold > 0)
     
-    if len(x_non_zero_array) > 1000:
-      element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
+    if len(x_non_zero_array) > 300:
+      element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
       eroded = cv2.erode(binary_threshold, element)
 
       cv2.imwrite(self.package_dir + "eroded.png", eroded)
       
       (y_non_zero_array,x_non_zero_array) = np.nonzero(eroded > 0)
+      rospy.loginfo("Number of detected Pixels: " + str(len(x_non_zero_array)))
     else:
       '''
       0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
       '''
+      rospy.loginfo("Number of detected Pixels: " + str(len(x_non_zero_array)))
       
       
-      
-      if len(x_non_zero_array) < 50:
+      if len(x_non_zero_array) < 17:
         print 'No Dart detected, has a Dart been dropped?'
         return [0,0]
-      
-    print "Number of detected Pixels: " , len(x_non_zero_array)
+
       
     y_median = np.median(y_non_zero_array)
     x_median = np.median(x_non_zero_array)
@@ -425,9 +438,12 @@ class Robodart_vision():
     image = cv.fromarray(image)
     #cv.SaveImage(self.package_dir + "CircleImage.png", image)
     self.eventImage = image  
-    self.eventType = cv.CV_8UC3    
-    small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
+    self.eventType = cv.CV_8UC1    
+    small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC1)
+    print "image:", image
+    print "small:", small    
     cv.Resize( image, small);
+    
     
     
     xOffset = xPos - detected_middle[0]
@@ -446,7 +462,7 @@ class Robodart_vision():
     yOffsetMeter = float(yOffset) / float(self.pixel_per_meter)
   
     #set image for stream
-    self.event_image = binary_threshold
+    #self.event_image = binary_threshold
     
     #Conversion from image coordinate system to robot coordinate system
     OffsetInRobotFrame = [0,0]
@@ -562,7 +578,7 @@ class Robodart_vision():
     self.circle_sample= 50 #number of Circles for calculate center
     #parameters for ObserveDartboard
     self.dp = 1 #Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height.
-    self.minDist = 10 #Minimum distance between the centers of the detected circles. If the parameter is too small, multiple neighbor circles may be falsely detected in addition to a true one. If it is too large, some circles may be missed.
+    self.minDist = 2 #Minimum distance between the centers of the detected circles. If the parameter is too small, multiple neighbor circles may be falsely detected in addition to a true one. If it is too large, some circles may be missed.
     self.param1 = 40 #First method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the higher threshold of the two passed to the Canny() edge detector (the lower one is twice smaller).
 
     self.param2 = 300 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
