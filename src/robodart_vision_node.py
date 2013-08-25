@@ -432,7 +432,7 @@ class Robodart_vision():
     cv2.circle(dartboard_with_arrow,(int(detected_middle[0]),int(detected_middle[1])),10, (255,0, 0),10) #red
     
     cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
-    
+    '''
     image = dartboard_with_arrow
     
     image = cv.fromarray(image)
@@ -443,7 +443,7 @@ class Robodart_vision():
     print "image:", image
     print "small:", small    
     cv.Resize( image, small);
-    
+    '''
     
     
     xOffset = xPos - detected_middle[0]
@@ -504,14 +504,14 @@ class Robodart_vision():
         cv2.circle(image, (c[0],c[1]),c[2], (0,255,0),2)
         cv2.circle(image,(c[0],c[1]),1, (0,255,0),2)
 
-      '''
+      
       image = cv.fromarray(image)
       cv.SaveImage(self.package_dir + "CircleImage.png", image)
       self.eventImage = image  
       self.eventType = cv.CV_8UC3    
       small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC3)    
       cv.Resize( image, small);
-      '''
+      
       
       
       #cv.ShowImage("Circles", small)
