@@ -340,16 +340,27 @@ class Robodart_vision():
     '''TODO check this and the block below if its needed, 
     check why template is not created probably if dartboard is at the side of camera view'''
     #Avoid Error if image is too small to cut out the whole template
-    '''
-    if xStart > len(dartboard[0]):
-      xStart = len(dartboard[0])-1
-    if yStart > len(dartboard):
-      yStart = len(dartboard)-1
-    '''
-
+    
+    xlength = length
+    ylength = length
+    
+    if xStart < 0:
+      xlength = xlength + xStart
+      xStart = 0
+    if yStart < 0:
+      ylength = ylength + yStart
+      yStart = 0
+    
     # Filter negativ Values and set them to zero
     xStart = max(xStart, 0)
     yStart = max(yStart, 0)
+
+    print 'Infos...'
+    print 'xStart: ', xStart
+    print 'xEnd: ', xEnd
+    print '_______________'
+    print 'yStart: ', yStart
+    print 'yEnd: ', yEnd
 
     template = dartboard[yStart:yEnd, xStart:xEnd]
 
@@ -366,10 +377,11 @@ class Robodart_vision():
     (min_x,max_y,minloc,maxloc)=cv2.minMaxLoc(result)
     (min_loc_x, min_loc_y) = minloc
     
-    xEndLoc = min_loc_x+length
-    yEndLoc = min_loc_y+length
+    xEndLoc = min_loc_x+xlength
+    yEndLoc = min_loc_y+ylength
     
-    print 'length3', length
+    print 'ylength', ylength
+    print 'xlength', xlength
     
     #Avoid Error if image is too small to cut out the whole template
     '''
