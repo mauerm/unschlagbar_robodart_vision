@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from docutils.math.latex2mathml import math
 
 PACKAGE='robodart_vision'
 import roslib
@@ -310,7 +311,6 @@ class Robodart_vision():
     dartboard = np.asarray(self.last_reference_picture)
 
     dartboard_with_arrow = np.asarray(self.frame)
-
     #extract circle from the dartboard
     circles = self.detect_circles(dartboard, False)
     detected_middle = self.getAverageCircleMiddle(circles)
@@ -341,11 +341,15 @@ class Robodart_vision():
     check why template is not created probably if dartboard is at the side of camera view'''
     #Avoid Error if image is too small to cut out the whole template
     '''
-    if xEnd > len(dartboard[0]):
-      xEnd = len(dartboard[0])-1
-    if yEnd > len(dartboard):
-      yEnd = len(dartboard)-1
+    if xStart > len(dartboard[0]):
+      xStart = len(dartboard[0])-1
+    if yStart > len(dartboard):
+      yStart = len(dartboard)-1
     '''
+
+    # Filter negativ Values and set them to zero
+    xStart = max(xStart, 0)
+    yStart = max(yStart, 0)
 
     template = dartboard[yStart:yEnd, xStart:xEnd]
 
