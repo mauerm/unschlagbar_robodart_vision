@@ -46,7 +46,10 @@ class Robodart_vision():
   9 0.0611
   """
   circle_radius = [0, 0.225, 0.185, 0.1625, 0.1405, 0.1185, 0.097, 0.075, 0.053, 0.03055]
-  pixel_per_meter = (1213.138 + 1206.6 + 1205.946) / 3
+  pixel_per_meter_10m = (1180.505 + 1181.329 + 1177.209) / 3
+  pixel_per_meter_11m = (1076.34 + 1085.169)/2
+  
+  pixel_per_meter = pixel_per_meter_11m
   #pixel_per_meter = 3543.216
 
   """
@@ -257,9 +260,10 @@ class Robodart_vision():
     currentFrame = self.frame
     circles = self.detect_circles(currentFrame)
 
-    xMid = self.width / 2
-    yMid = self.height / 2
+    xMid = self.frame.cols / 2
+    yMid = self.frame.rows / 2
     
+    print "Half x and y", xMid, yMid
     avg = self.getAverageCircleMiddle(circles)
     
     numpy_currentFrame = np.asarray(currentFrame)
@@ -592,7 +596,8 @@ if __name__ == '__main__':
   try:
     my_robodart_vision = Robodart_vision()
 
-  except rospy.ROSInterruptException: pass
+  except rospy.ROSInterruptException: 
+    rospy.logwarn("ROSInterruptException at Vision startup")
 
   ref_pic  = rospy.Service('robodart_vision/take_reference_picture', Empty, my_robodart_vision.take_reference_picture)
   bullseye = rospy.Service('robodart_vision/get_bullseye_center_offset', Point, my_robodart_vision.get_bullseye_center_offset)
