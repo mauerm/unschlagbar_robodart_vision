@@ -35,20 +35,15 @@ class Robodart_vision():
   the measured radius of the circle.
   The last Value from about 10 Meter was: 2983.668489245
   
-  Aussendruchmesser von Kreis:
-  1 0.45
-  2 0.37
-  3 0.325
-  4 0.281
-  5 0.237
-  6 0.194
-  7 0.15
-  8 0.106
-  9 0.0611
+  Outer radius
   """
   circle_radius = [0, 0.225, 0.185, 0.1625, 0.1405, 0.1185, 0.097, 0.075, 0.053, 0.03055]
   pixel_per_meter_10m = (1180.505 + 1181.329 + 1177.209) / 3
   pixel_per_meter_11m = (1076.34 + 1085.169)/2
+
+  pixel_per_meter_generalprobe = (32 / circle_radius[9] + 57 / circle_radius[8] + 77 / circle_radius[7] + 103 / circle_radius[6] + 124 / circle_radius[5] +
+                                  149 / circle_radius[4] + 171 / circle_radius[3] + 196 / circle_radius[2] + 237 / circle_radius[1]) / 9
+  print pixel_per_meter_generalprobe
   
   pixel_per_meter = pixel_per_meter_11m
   #pixel_per_meter = 3543.216
