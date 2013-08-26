@@ -307,7 +307,7 @@ class Robodart_vision():
 
     dartboard_with_arrow = np.asarray(self.frame)
     #extract circle from the dartboard
-    circles = self.detect_circles(dartboard, False)
+    circles = self.detect_circles(dartboard_with_arrow, False)
     detected_middle = self.getAverageCircleMiddle(circles)
 
     
@@ -357,14 +357,14 @@ class Robodart_vision():
     print 'yStart: ', yStart
     print 'yEnd: ', yEnd
 
-    template = dartboard[yStart:yEnd, xStart:xEnd]
+    template = dartboard_with_arrow[yStart:yEnd, xStart:xEnd]
 
     cv2.imwrite(self.package_dir + "template.png", template)
     cv2.imwrite(self.package_dir + "dartboard_with_arrow.png", dartboard_with_arrow) 
     
     # match template
     try:
-      result = cv2.matchTemplate(dartboard_with_arrow,template,cv2.TM_SQDIFF)
+      result = cv2.matchTemplate(dartboard,template,cv2.TM_SQDIFF)
     except:
       print "Unexpected error: see template.png and dartboard_with_arrow.png", sys.exc_info()[0]
       return [0,0]
@@ -385,7 +385,7 @@ class Robodart_vision():
     if yEnd > len(dartboard_with_arrow):
       yEnd = len(dartboard_with_arrow)-1
     '''
-    cut_from_dartboard = dartboard_with_arrow[min_loc_y:yEndLoc, min_loc_x:xEndLoc]
+    cut_from_dartboard = dartboard[min_loc_y:yEndLoc, min_loc_x:xEndLoc]
     cv2.imwrite(self.package_dir + "cut_from_dartboard.png", cut_from_dartboard) 
     
 
@@ -437,8 +437,8 @@ class Robodart_vision():
     
     print 'x_median' , x_median
 
-    xPos = x_median + min_loc_x
-    yPos = y_median + min_loc_y
+    xPos = x_median + xStart
+    yPos = y_median + yStart
     
     cv2.circle(dartboard_with_arrow,(int(xPos),int(yPos)),10, (255,255, 255),10) #white
 
