@@ -57,7 +57,11 @@ class Robodart_vision():
   
   ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
   ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
-  threshold_value = 60
+  threshold_value = 60  
+  
+  ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
+  ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
+  erode_treshold = 100
   
 
   ''' The Publishrate for the Live picture in picture Image. '''
@@ -75,7 +79,7 @@ class Robodart_vision():
 
   ''' This is the size of the smaller live Image in the upper left corner of the live stream'''
   ''' Hint: Don't make this value to high becouse it costs a lot of performance with the current implementation '''
-  StreamPiPSize   = [320, 240]
+  StreamPiPSize   = [160, 120]
   
   ''' StreamTicker: Shows the current status of the Stream 
 
@@ -156,17 +160,11 @@ class Robodart_vision():
   def receive_image_from_camera_callback(self, data):
     try:
       cv_image = self.bridge.imgmsg_to_cv(data, "bgr8")
-
+      
       self.frame = cv_image
-      
-      showImage = cv.CreateMat(self.LiveCaptureSize[1], self.LiveCaptureSize[0], cv.CV_8UC3)      
-      cv.Resize( cv_image, showImage)
-      cv.ShowImage("cam window", showImage)
-      
       # Publish own Stream
       self.publish_stream()
       self.setTicker(True)
-      cv.WaitKey(3)
     except CvBridgeError, e:
       print e
       
@@ -184,10 +182,12 @@ class Robodart_vision():
       if self.streamTicker == 1 and self.eventImage is not None:
         cv.Resize(self.eventImage, streamImage)
         
+        
+        
         smallImage = cv.CreateMat(self.StreamPiPSize[1], self.StreamPiPSize[0], cv.CV_8UC3)
         notSoSmallImage = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], cv.CV_8UC3)
         cv.Resize(self.frame, smallImage)
-
+        cv.Circle(smallImage,(smallImage.cols / 2,smallImage.rows / 2),2, (0,0, 255),2) #red
         #cv.Resize(smallImage, notSoSmallImage, cv.CV_INTER_AREA)
         
         #streamImage = notSoSmallImage
@@ -212,6 +212,7 @@ class Robodart_vision():
          
       else:
         cv.Resize( self.frame, streamImage) 
+        cv.Circle(streamImage,(streamImage.cols / 2,streamImage.rows / 2),2, (0,0, 255),2) #red
       
       streamImage = self.bridge.cv_to_imgmsg(streamImage, "bgr8")
       self.stream.publish(streamImage)
@@ -233,10 +234,11 @@ class Robodart_vision():
   ''' ========================================== '''
   def take_reference_picture(self, req):   
     print "take_reference_picture()..."
-    self.last_reference_picture = self.frame
     
     #cv.ShowImage("Image", currentFrame)
-
+    self.last_reference_picture = cv.CreateMat(self.frame.rows, self.frame.cols, cv.CV_8UC3)
+    cv.Resize(self.frame, self.last_reference_picture)
+      
     cv.SaveImage(self.package_dir + "refpic.png", self.last_reference_picture)
 
     #self.showPicWithCircles(self.last_reference_picture)
@@ -314,6 +316,7 @@ class Robodart_vision():
 
     # Convert to GreyScale:
     dartboard = cv2.cvtColor(dartboard, cv2.COLOR_RGBA2GRAY)
+    dartboard_with_arrow_colored = dartboard_with_arrow
     dartboard_with_arrow = cv2.cvtColor(dartboard_with_arrow, cv2.COLOR_RGBA2GRAY)
 
 
@@ -410,20 +413,41 @@ class Robodart_vision():
 
     #cv2.imwrite(self.package_dir + "dilated.png", dilated)
 
-    (y_non_zero_array,x_non_zero_array) = np.nonzero(binary_threshold > 0)
+    eroded = binary_threshold    
+    std_dev_limit = 10
+    erode_size = 1
     
-    if len(x_non_zero_array) > 300:
-      element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2,2))
-      eroded = cv2.erode(binary_threshold, element)
-
-      cv2.imwrite(self.package_dir + "eroded.png", eroded)
-      
+    while True:
+      erode_size += 1
       (y_non_zero_array,x_non_zero_array) = np.nonzero(eroded > 0)
-      rospy.loginfo("Number of detected Pixels: " + str(len(x_non_zero_array)))
+      
+      #here
+      std_dev_x = x_non_zero_array.std()
+      std_dev_y = y_non_zero_array.std()
+      
+      print "Std_dev_x, Std_dev_y", std_dev_x, std_dev_y
+
+      
+      if std_dev_x < std_dev_limit and std_dev_y < std_dev_limit:
+        print "Dart detected"
+        break
+        
+      else:
+        element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(erode_size,erode_size))
+        eroded = cv2.erode(binary_threshold, element)
+  
+        cv2.imwrite(self.package_dir + "eroded_" + str(erode_size) + ".png", eroded)
+        
+        rospy.loginfo("Number of detected Pixels for erod=" + str(erode_size) + ": " + str(len(x_non_zero_array)))
+        
+      
+    '''  
+    
+    if len(x_non_zero_array) > self.erode_treshold:
     else:
-      '''
-      0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
-      '''
+    '''
+    #0,0 is in the left top corner of the image, min_loc_y are rows, min_loc_x are cols
+    '''
       rospy.loginfo("Number of detected Pixels: " + str(len(x_non_zero_array)))
       
       
@@ -431,6 +455,9 @@ class Robodart_vision():
         print 'No Dart detected, has a Dart been dropped?'
         return [0,0]
 
+    '''
+      
+      
       
     y_median = np.median(y_non_zero_array)
     x_median = np.median(x_non_zero_array)
@@ -440,31 +467,28 @@ class Robodart_vision():
     xPos = x_median + xStart
     yPos = y_median + yStart
     
-    cv2.circle(dartboard_with_arrow,(int(xPos),int(yPos)),10, (255,255, 255),10) #white
+    cv2.circle(dartboard_with_arrow_colored,(int(xPos),int(yPos)),2, (255,255, 255),2) #white
+    
+    cv2.line(dartboard_with_arrow_colored,(int(xPos),int(yPos)),(len(dartboard_with_arrow_colored[0])/2,len(dartboard_with_arrow_colored)/2),(255,255,255),2)
+    
+    cv2.circle(dartboard_with_arrow_colored,(len(dartboard_with_arrow_colored[0])/2,len(dartboard_with_arrow_colored)/2),2, (255,0, 0),2) #red
 
     print 'x_median + min_loc_x' , x_median
     
-    cv2.circle(dartboard_with_arrow,(int(detected_middle[0]),int(detected_middle[1])),10, (255,0, 0),10) #red
+    cv2.circle(dartboard_with_arrow_colored,(int(detected_middle[0]),int(detected_middle[1])),2, (0, 0, 255),2) #blue
     
-    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow)
-    '''
-    image = dartboard_with_arrow
+    cv2.imwrite(self.package_dir + "dartboard_with_detected_arrow.png", dartboard_with_arrow_colored)
     
+    image = dartboard_with_arrow_colored
     image = cv.fromarray(image)
-    #cv.SaveImage(self.package_dir + "CircleImage.png", image)
     self.eventImage = image  
-    self.eventType = cv.CV_8UC1    
-    small = cv.CreateMat(image.rows / 4, image.cols / 4, cv.CV_8UC1)
-    print "image:", image
-    print "small:", small    
-    cv.Resize( image, small);
-    '''
+    self.eventType = cv.CV_8UC3
     
     
-    xOffset = xPos - len(dartboard_with_arrow[0])
-    yOffset = yPos - len(dartboard_with_arrow)
+    xOffset = xPos - len(dartboard_with_arrow[0])/2
+    yOffset = yPos - len(dartboard_with_arrow)/2
     
- 
+    
     
     print 'Pixel per meter' , self.pixel_per_meter
     print 'xOffset' , xOffset
