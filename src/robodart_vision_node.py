@@ -286,7 +286,7 @@ class Robodart_vision():
 
 
     #TODO: check
-    return [xDiffInRobotFrame - self.camera_dart_offset[0], yDiffInRobotFrame - self.camera_dart_offset[1]]
+    return [xDiffInRobotFrame, yDiffInRobotFrame]
 
 
   ''' ============================================================== '''
@@ -461,8 +461,8 @@ class Robodart_vision():
     '''
     
     
-    xOffset = xPos - detected_middle[0]
-    yOffset = yPos - detected_middle[1]
+    xOffset = xPos - len(dartboard_with_arrow[0])
+    yOffset = yPos - len(dartboard_with_arrow)
     
  
     
