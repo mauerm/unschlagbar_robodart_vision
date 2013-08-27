@@ -416,8 +416,9 @@ class Robodart_vision():
     eroded = binary_threshold    
     std_dev_limit = 10
     erode_size = 1
+    erode_limit = 7
     
-    while True:
+    while erode_size <= erode_limit:
       erode_size += 1
       (y_non_zero_array,x_non_zero_array) = np.nonzero(eroded > 0)
       
@@ -440,7 +441,9 @@ class Robodart_vision():
         
         rospy.loginfo("Number of detected Pixels for erod=" + str(erode_size) + ": " + str(len(x_non_zero_array)))
         
-      
+    if erode_size == erode_limit:
+      print "Didn't find the dart after " + erode_limit + " erods, abording!"
+      return [0,0] 
     '''  
     
     if len(x_non_zero_array) > self.erode_treshold:
@@ -467,11 +470,11 @@ class Robodart_vision():
     xPos = x_median + xStart
     yPos = y_median + yStart
     
-    cv2.circle(dartboard_with_arrow_colored,(int(xPos),int(yPos)),2, (255,255, 255),2) #white
+    cv2.circle(dartboard_with_arrow_colored,(int(xPos),int(yPos)),4, (0,255, 0),4) #white
     
-    cv2.line(dartboard_with_arrow_colored,(int(xPos),int(yPos)),(len(dartboard_with_arrow_colored[0])/2,len(dartboard_with_arrow_colored)/2),(255,255,255),2)
+    cv2.line(dartboard_with_arrow_colored,(int(xPos),int(yPos)),(len(dartboard_with_arrow_colored[0])/2,len(dartboard_with_arrow_colored)/2),(0,255,0),2)
     
-    cv2.circle(dartboard_with_arrow_colored,(len(dartboard_with_arrow_colored[0])/2,len(dartboard_with_arrow_colored)/2),2, (255,0, 0),2) #red
+    cv2.circle(dartboard_with_arrow_colored,(len(dartboard_with_arrow_colored[0])/2,len(dartboard_with_arrow_colored)/2),3, (255,0, 0),2) #red
 
     print 'x_median + min_loc_x' , x_median
     
