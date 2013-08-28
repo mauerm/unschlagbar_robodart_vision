@@ -460,12 +460,12 @@ class Robodart_vision():
       rospy.loginfo("Number of detected Pixels: " + str(len(x_non_zero_array)))
       
       
-      if len(x_non_zero_array) < 17:
-        print 'No Dart detected, has a Dart been dropped?'
-        return [0,0]
+      
 
     '''
-      
+    if len(x_non_zero_array) < 5:
+      print 'No Dart detected, has a Dart been dropped?'
+      return [0,0] 
       
       
     y_median = np.median(y_non_zero_array)
