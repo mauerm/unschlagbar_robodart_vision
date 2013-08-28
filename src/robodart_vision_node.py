@@ -308,6 +308,8 @@ class Robodart_vision():
     dartboard = np.asarray(self.last_reference_picture)
 
     dartboard_with_arrow = np.asarray(self.frame)
+    cv2.imwrite(self.package_dir + "dartboard_with_arrow.png", dartboard_with_arrow) 
+    
     #extract circle from the dartboard
     circles = self.detect_circles(dartboard_with_arrow, False)
     detected_middle = self.getAverageCircleMiddle(circles)
@@ -363,7 +365,7 @@ class Robodart_vision():
     template = dartboard_with_arrow[yStart:yEnd, xStart:xEnd]
 
     cv2.imwrite(self.package_dir + "template.png", template)
-    cv2.imwrite(self.package_dir + "dartboard_with_arrow.png", dartboard_with_arrow) 
+    
     
     # match template
     try:
@@ -413,10 +415,14 @@ class Robodart_vision():
 
     #cv2.imwrite(self.package_dir + "dilated.png", dilated)
 
-    eroded = binary_threshold    
     std_dev_limit = 10
-    erode_size = 1
+    erode_size = 3
     erode_limit = 7
+    
+    element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(erode_size,erode_size))
+    eroded = cv2.erode(binary_threshold, element)
+    
+  
     
     while erode_size <= erode_limit:
       erode_size += 1
@@ -442,7 +448,7 @@ class Robodart_vision():
         rospy.loginfo("Number of detected Pixels for erod=" + str(erode_size) + ": " + str(len(x_non_zero_array)))
         
     if erode_size == erode_limit:
-      print "Didn't find the dart after " + erode_limit + " erods, abording!"
+      print "Didn't find the dart after " + str(erode_limit) + " erods, abording!"
       return [0,0] 
     '''  
     
