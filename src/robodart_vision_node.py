@@ -221,7 +221,6 @@ class Robodart_vision():
     #cv.ShowImage("Image", currentFrame)
     self.last_reference_picture = cv.CreateMat(self.frame.rows, self.frame.cols, cv.CV_8UC3)
     cv.Resize(self.frame, self.last_reference_picture)
-    self.eventImage = self.frame
     cv.SaveImage(self.package_dir + "refpic.png", self.last_reference_picture)
 
     #self.showPicWithCircles(self.last_reference_picture)
