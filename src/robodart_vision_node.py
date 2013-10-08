@@ -181,35 +181,18 @@ class Robodart_vision():
       streamImage = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], self.eventType)
       if self.streamTicker == 1 and self.eventImage is not None:
         cv.Resize(self.eventImage, streamImage)
-        
-        
-        
+
+
         smallImage = cv.CreateMat(self.StreamPiPSize[1], self.StreamPiPSize[0], cv.CV_8UC3)
-        notSoSmallImage = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], cv.CV_8UC3)
         cv.Resize(self.frame, smallImage)
-        cv.Circle(smallImage,(smallImage.cols / 2,smallImage.rows / 2),2, (0,0, 255),2) #red
-        #cv.Resize(smallImage, notSoSmallImage, cv.CV_INTER_AREA)
-        
-        #streamImage = notSoSmallImage
-        
-        cv.Zero(notSoSmallImage)
 
-        
-        #copy smallImage data in an bigger Image:
-        for row in range(self.StreamPiPSize[1]):
-          for col in range(self.StreamPiPSize[0]):
-            notSoSmallImage[row,col] = smallImage[row,col]
-        
+        newImage = np.asarray(streamImage)
+        newImage2 = np.asarray(smallImage)
 
-        mask = cv.CreateMat(self.StreamSize[1], self.StreamSize[0], cv.CV_8UC1)
-        cv.Zero(mask)
+        newImage[0:self.StreamPiPSize[1], 0:self.StreamPiPSize[0]] = newImage2[0:self.StreamPiPSize[1], 0:self.StreamPiPSize[0]]
 
-        for row in range(self.StreamPiPSize[1]):
-          for col in range(self.StreamPiPSize[0]):
-            mask[row,col] = 255
+        streamImage = cv.fromarray(newImage)
 
-        cv.Copy(notSoSmallImage, streamImage, mask)
-         
       else:
         cv.Resize( self.frame, streamImage) 
         cv.Circle(streamImage,(streamImage.cols / 2,streamImage.rows / 2),2, (0,0, 255),2) #red
@@ -238,7 +221,7 @@ class Robodart_vision():
     #cv.ShowImage("Image", currentFrame)
     self.last_reference_picture = cv.CreateMat(self.frame.rows, self.frame.cols, cv.CV_8UC3)
     cv.Resize(self.frame, self.last_reference_picture)
-      
+    self.eventImage = self.frame
     cv.SaveImage(self.package_dir + "refpic.png", self.last_reference_picture)
 
     #self.showPicWithCircles(self.last_reference_picture)
