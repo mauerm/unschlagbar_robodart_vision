@@ -48,17 +48,23 @@ class Robodart_vision():
   pixel_per_meter = pixel_per_meter_11m
   #pixel_per_meter = 3543.216
 
+  #3meter test 15.11.13
+  pixel_per_meter = 645.96
+
   """
   This value is calculated by get_dart_center_offset and is set by robodart_control
   """
   #10m offset [0.309408827795,-0.0363646297808]
   camera_dart_offset = [0.0, 0.0]
 
+
   
   ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
   ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
-  threshold_value = 60  
-  
+  #threshold_value = 60
+  threshold_value = 30
+    
+
   ''' Treshhold for the Bitmapimage from the Div image during the Arrow detectin '''
   ''' If nothing is seen, you have to lower this value, if there is to much noise, you have to increas this value '''
   erode_treshold = 100
@@ -249,7 +255,7 @@ class Robodart_vision():
   ''' Calculates the Offset from the Bullseye to the Center of the Image '''
   ''' ================================================================== '''
   def get_bullseye_center_offset(self, req):
-    
+    self.set_circle_parameter_default()
     timestamp = str(datetime.datetime.now())
     self.package_dir = roslib.packages.get_pkg_dir(PACKAGE) + '/temp_images/'+ timestamp + '_'
 
@@ -416,7 +422,7 @@ class Robodart_vision():
     #cv2.imwrite(self.package_dir + "dilated.png", dilated)
 
     std_dev_limit = 10
-    erode_size = 3
+    erode_size = 2
     erode_limit = 7
     
     element = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(erode_size,erode_size))
@@ -463,7 +469,7 @@ class Robodart_vision():
       
 
     '''
-    if len(x_non_zero_array) < 5:
+    if len(x_non_zero_array) < 1:
       print 'No Dart detected, has a Dart been dropped?'
       return [0,0] 
       
@@ -627,11 +633,11 @@ class Robodart_vision():
     #parameters for ObserveDartboard
     self.dp = 1 #Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height.
     self.minDist = 2 #Minimum distance between the centers of the detected circles. If the parameter is too small, multiple neighbor circles may be falsely detected in addition to a true one. If it is too large, some circles may be missed.
-    self.param1 = 40 #First method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the higher threshold of the two passed to the Canny() edge detector (the lower one is twice smaller).
+    self.param1 = 20 #First method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the higher threshold of the two passed to the Canny() edge detector (the lower one is twice smaller).
 
-    self.param2 = 300 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
-    self.minRadius = 80 #Minimum circle radius.
-    self.maxRadius = 700#Maximum circle radius.
+    self.param2 = 150 #Second method-specific parameter. In case of CV_HOUGH_GRADIENT , it is the accumulator threshold for the circle centers at the detection stage. The smaller it is, the more false circles may be detected. Circles, corresponding to the larger accumulator values, will be returned first.
+    self.minRadius = 10 #Minimum circle radius.
+    self.maxRadius = 900#Maximum circle radius.
 
 
 if __name__ == '__main__':
