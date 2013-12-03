@@ -173,6 +173,7 @@ class Robodart_vision():
       self.setTicker(True)
     except CvBridgeError, e:
       print e
+
       
  
   ''' ========================== '''
@@ -510,6 +511,22 @@ class Robodart_vision():
     return OffsetInRobotFrame
 
 
+  def callib_pixel_per_meter (self, data):
+    self.set_circle_parameter_callib()
+    circle_radius_m = 0.19
+    currentFrame = self.frame
+    circles = self.detect_circles(currentFrame)
+
+    if (len(circles) > 1):
+      print "Error. Too many Circles"
+      return []
+		
+    print circles[0][2] / circle_radius_m
+
+    self.set_circle_parameter_default()
+
+    return []
+
 
   def set_camera_dart_offset(self, data):
     #TODO: change name
@@ -608,6 +625,7 @@ class Robodart_vision():
     cv.Resize( showImage, small);
     cv.ShowImage(windowName, small)
 
+
   ''' Sets circle detection Parameters '''  
   def set_circle_parameter_default(self):
     self.BGsample = 30 #number of frames to gather BG samples (average) from at start of capture
@@ -622,6 +640,17 @@ class Robodart_vision():
     self.maxRadius = 900#Maximum circle radius.
 
 
+  def set_circle_parameter_callib(self):
+    self.BGsample = 20 
+    self.circle_sample= 150
+    self.dp = 1 
+    self.minDist = 10000
+    self.param1 = 20 
+    self.param2 = 50
+    self.minRadius = 1 #Minimum circle radius.
+    self.maxRadius = 10000#Maximum circle radius.
+
+
 if __name__ == '__main__':
   rospy.init_node('robodart_vision_node')
   
@@ -634,6 +663,7 @@ if __name__ == '__main__':
   ref_pic  = rospy.Service('robodart_vision/take_reference_picture', Empty, my_robodart_vision.take_reference_picture)
   bullseye = rospy.Service('robodart_vision/get_bullseye_center_offset', Point, my_robodart_vision.get_bullseye_center_offset)
   dart     = rospy.Service('robodart_vision/get_dart_center_offset', Point, my_robodart_vision.get_dart_center_offset)
+  callib_pixel_per_meter = rospy.Service('robodart_vision/callib_pixel_per_meter', Empty, my_robodart_vision.callib_pixel_per_meter )
   camOffset = rospy.Service('robodart_vision/set_camera_dart_offset', SetOffset, my_robodart_vision.set_camera_dart_offset)
   
 
